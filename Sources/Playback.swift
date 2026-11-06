@@ -601,13 +601,18 @@ final class VLCPlayerViewController: UIViewController, VLCMediaPlayerDelegate, U
         body.textAlignment = .center
         body.textColor = UIColor.white.withAlphaComponent(0.8)
         body.font = .systemFont(ofSize: 15)
-        let retry = UIButton(type: .system)
-        retry.setTitle("Try again", for: .normal)
-        retry.titleLabel?.font = .systemFont(ofSize: 16, weight: .semibold)
-        retry.tintColor = .black
-        retry.backgroundColor = .white
-        retry.layer.cornerRadius = 10
-        retry.contentEdgeInsets = UIEdgeInsets(top: 10, left: 22, bottom: 10, right: 22)
+        var retryConfig = UIButton.Configuration.filled()
+        retryConfig.title = "Try again"
+        retryConfig.baseBackgroundColor = .white
+        retryConfig.baseForegroundColor = .black
+        retryConfig.background.cornerRadius = 10
+        retryConfig.contentInsets = NSDirectionalEdgeInsets(top: 10, leading: 22, bottom: 10, trailing: 22)
+        retryConfig.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { attrs in
+            var attrs = attrs
+            attrs.font = .systemFont(ofSize: 16, weight: .semibold)
+            return attrs
+        }
+        let retry = UIButton(configuration: retryConfig)
         retry.addTarget(self, action: #selector(didTapRetry), for: .touchUpInside)
         let stack = UIStackView(arrangedSubviews: [title, body, retry])
         stack.axis = .vertical; stack.spacing = 14; stack.alignment = .center
