@@ -26,6 +26,14 @@ final class WebViewModel: ObservableObject {
         webView?.load(URLRequest(url: url))
     }
 
+    /// Stremio's web player stays open behind VLC with a failed video, so return to the page the
+    /// user pressed Play on.
+    func leavePlayerPage() {
+        guard let webView, webView.url?.fragment?.hasPrefix("/player/") == true else { return }
+        Log.web.debug("leaving the web player page")
+        webView.evaluateJavaScript("history.back()")
+    }
+
     /// Stremio's URL builder leaves a dangling '?'; libvlc's HTTP access can
     /// mis-handle an empty query, so strip it.
     static func cleanedStreamURL(_ rawURL: URL) -> URL {
