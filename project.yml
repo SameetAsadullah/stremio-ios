@@ -78,5 +78,6 @@ targets:
         SWIFT_VERSION: "5.0"
         ENABLE_BITCODE: NO
         CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: 99NBFU9494
         OTHER_LDFLAGS: "-ObjC -lc++"
         SWIFT_OBJC_BRIDGING_HEADER: Sources/Stremio-Bridging.h

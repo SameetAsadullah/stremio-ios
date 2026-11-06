@@ -218,6 +218,7 @@
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
 					A1C468C61AB8D679598574B6 = {
+						DevelopmentTeam = 99NBFU9494;
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -399,6 +400,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 99NBFU9494;
 				ENABLE_BITCODE = NO;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
@@ -428,6 +430,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 99NBFU9494;
 				ENABLE_BITCODE = NO;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
