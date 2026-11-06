@@ -20,14 +20,14 @@ extension PlayerViewController {
                 center.togglePlayPauseCommand,
                 { [weak self] _ in self?.setPlaying(!(self?.player?.isPlaying ?? true)) ?? false }
             ),
-            (center.skipForwardCommand, { [weak self] _ in self?.player?.jumpForward(10) != nil }),
-            (center.skipBackwardCommand, { [weak self] _ in self?.player?.jumpBackward(10) != nil }),
+            (center.skipForwardCommand, { [weak self] _ in self?.skip(by: 10_000) != nil }),
+            (center.skipBackwardCommand, { [weak self] _ in self?.skip(by: -10_000) != nil }),
             (
                 center.changePlaybackPositionCommand,
                 { [weak self] event in
-                    guard let player = self?.player, let event = event as? MPChangePlaybackPositionCommandEvent
+                    guard let self, self.player != nil, let event = event as? MPChangePlaybackPositionCommandEvent
                     else { return false }
-                    player.time = VLCTime(int: Int32(event.positionTime * 1000))
+                    self.seek(to: Int(event.positionTime * 1000))
                     return true
                 }
             ),

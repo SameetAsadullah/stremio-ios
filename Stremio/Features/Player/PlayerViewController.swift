@@ -46,6 +46,12 @@ final class PlayerViewController: UIViewController {
     let nextButton = UIButton(type: .system)
     var streamInfo: StreamInfo?
     var refetchedStreamInfo = false
+    var seekTracker = SeekTracker()
+    var stallTimer: Timer?
+    var lastAdvance = Date()
+    var stallStatusShown = false
+    /// False after the viewer pauses, so a pause is not shown as buffering.
+    var wantsPlaying = true
     var remoteTargets: [(MPRemoteCommand, Any)] = []
     var nowPlayingArtwork: MPMediaItemArtwork?
 
@@ -217,6 +223,7 @@ final class PlayerViewController: UIViewController {
         slider.minimumTrackTintColor = .white
         slider.translatesAutoresizingMaskIntoConstraints = false
         slider.addTarget(self, action: #selector(scrubStart), for: .touchDown)
+        slider.addTarget(self, action: #selector(scrubChanged), for: .valueChanged)
         slider.addTarget(self, action: #selector(scrubEnd), for: [.touchUpInside, .touchUpOutside])
         controls.addSubview(slider)
 
@@ -298,6 +305,7 @@ final class PlayerViewController: UIViewController {
     /// input it blocks, which is what froze "close" mid-buffer. Detach it.
     func stopPlayerAsync() {
         teardownRemoteCommands()
+        stopStallWatch()
         tvCancellable = nil
         statsTimer?.invalidate()
         statsTimer = nil
@@ -352,7 +360,7 @@ final class PlayerViewController: UIViewController {
     /// reports 0, which would overwrite the saved position.
     func reportTime(seek: Bool = false) {
         guard let player, hasRenderedFrame, pendingPosition == nil else { return }
-        let time = Int(player.time.intValue)
+        let time = seekTracker.target ?? Int(player.time.intValue)
         let duration = Int(player.media?.length.intValue ?? 0)
         guard time > 0 else { return }
         lastReportedTime = time
@@ -431,6 +439,9 @@ final class PlayerViewController: UIViewController {
     @discardableResult
     func setPlaying(_ playing: Bool) -> Bool {
         guard let player else { return false }
+        wantsPlaying = playing
+        // A long pause is not a stall.
+        if playing { lastAdvance = Date() }
         if playing { player.play() } else { player.pause() }
         updatePlayPauseIcon(playing: playing)
         return true
@@ -441,16 +452,20 @@ final class PlayerViewController: UIViewController {
     }
 
     @objc private func didTapSkipBack() {
-        player?.jumpBackward(10)
+        skip(by: -10_000)
         scheduleControlsHide()
     }
     @objc private func didTapSkipForward() {
-        player?.jumpForward(10)
+        skip(by: 10_000)
         scheduleControlsHide()
     }
     @objc private func scrubStart() { isScrubbing = true }
     @objc private func scrubEnd() {
-        player?.position = slider.value
+        if durationMs > 0 {
+            seek(to: Int(Double(slider.value) * Double(durationMs)))
+        } else {
+            player?.position = slider.value
+        }
         isScrubbing = false
         scheduleControlsHide()
     }

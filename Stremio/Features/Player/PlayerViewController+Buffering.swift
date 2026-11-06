@@ -16,11 +16,12 @@ extension PlayerViewController {
             statusLabel.isHidden = true
             return
         }
+        statusLabel.text = "Buffering\u{2026}"
         statusLabel.isHidden = false
         let started = Date()
         statsTimer?.invalidate()
         statsTimer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in
-            guard let self, !self.hasRenderedFrame else { return }
+            guard let self else { return }
             URLSession.shared.dataTask(with: url) { data, _, _ in
                 guard let data, let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
                     return
@@ -42,6 +43,7 @@ extension PlayerViewController {
                 DispatchQueue.main.async { self.statusLabel.text = text }
             }.resume()
         }
+        statsTimer?.fire()
     }
 
     func stopStatsPolling() {

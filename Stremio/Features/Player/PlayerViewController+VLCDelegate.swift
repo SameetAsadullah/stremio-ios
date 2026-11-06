@@ -47,6 +47,7 @@ extension PlayerViewController: VLCMediaPlayerDelegate {
             Log.player.info("first frame at \(player.time.stringValue, privacy: .public)")
             stopStatsPolling()
             loadStreamInfo()
+            startStallWatch()
             scheduleControlsHide()
             #if VLC_SELFTEST
                 DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in
@@ -60,10 +61,7 @@ extension PlayerViewController: VLCMediaPlayerDelegate {
                 }
             #endif
         }
+        handleTimeUpdate()
         trackProgress()
-        guard !isScrubbing else { return }
-        slider.value = player.position
-        elapsedLabel.text = player.time.stringValue
-        if let remaining = player.remainingTime?.stringValue { remainingLabel.text = remaining }
     }
 }
