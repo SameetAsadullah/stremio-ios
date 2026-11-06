@@ -9,10 +9,9 @@ targets:
     type: application
     platform: iOS
     sources:
-      - Sources
-      - Assets.xcassets
+      - Stremio
     info:
-      path: Sources/Info.plist
+      path: Stremio/Resources/Info.plist
       properties:
         CFBundleDisplayName: Stremio
         UILaunchScreen:
@@ -79,4 +78,4 @@ targets:
         CODE_SIGN_STYLE: Automatic
         DEVELOPMENT_TEAM: 99NBFU9494
         OTHER_LDFLAGS: "-ObjC -lc++"
-        SWIFT_OBJC_BRIDGING_HEADER: Sources/Stremio-Bridging.h
+        SWIFT_OBJC_BRIDGING_HEADER: Stremio/App/Stremio-Bridging.h
