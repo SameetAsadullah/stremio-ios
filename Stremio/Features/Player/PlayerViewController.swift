@@ -19,8 +19,8 @@ final class PlayerViewController: UIViewController {
 
     private let closeButton = UIButton(type: .system)
     private let titleLabel = UILabel()
-    let audioButton = UIButton(type: .system)
-    let subsButton = UIButton(type: .system)
+    let audioButton = MenuButton(type: .system)
+    let subsButton = MenuButton(type: .system)
     private let aspectButton = UIButton(type: .system)
     private let castButton = UIButton(type: .system)
     private let tvPlaceholder = UIStackView()
@@ -179,8 +179,9 @@ final class PlayerViewController: UIViewController {
         controls.addSubview(scrim)
 
         configureIcon(closeButton, "xmark", action: #selector(didTapClose))
-        configureIcon(audioButton, "waveform", action: #selector(showAudioMenu))
-        configureIcon(subsButton, "captions.bubble", action: #selector(showSubtitleMenu))
+        configureIcon(audioButton, "waveform")
+        configureIcon(subsButton, "captions.bubble")
+        setupTrackMenus()
         configureIcon(aspectButton, "rectangle.arrowtriangle.2.inward", action: #selector(didTapAspect))
         configureIcon(castButton, "airplayvideo", action: #selector(didTapCast))
         configureIcon(playPauseButton, "pause.fill", action: #selector(didTapPlayPause), size: 48)
@@ -243,11 +244,11 @@ final class PlayerViewController: UIViewController {
         ])
     }
 
-    private func configureIcon(_ b: UIButton, _ name: String, action: Selector, size: CGFloat = 22) {
+    private func configureIcon(_ b: UIButton, _ name: String, action: Selector? = nil, size: CGFloat = 22) {
         b.setImage(Self.symbol(name, size: size), for: .normal)
         b.tintColor = .white
         b.translatesAutoresizingMaskIntoConstraints = false
-        b.addTarget(self, action: action, for: .touchUpInside)
+        if let action { b.addTarget(self, action: action, for: .touchUpInside) }
     }
 
     // MARK: - Playback
