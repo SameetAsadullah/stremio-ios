@@ -5,6 +5,8 @@ import WebKit
 /// without the web view being torn down on every state change.
 final class WebViewModel: ObservableObject {
     @Published var isLoading = true
+    /// False until the first page load, while the splash screen shows.
+    @Published var hasLoaded = false
     @Published var errorMessage: String?
     /// Background colour reported by the page, used to tint the safe-area chrome.
     @Published var chromeColor: UIColor = UIColor(red: 0.055, green: 0.043, blue: 0.12, alpha: 1)  // Stremio navy

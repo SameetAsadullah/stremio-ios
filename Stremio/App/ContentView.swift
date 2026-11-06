@@ -34,7 +34,9 @@ struct StremioHostView: View {
             WebView(model: model)
                 .ignoresSafeArea(edges: .bottom)
 
-            if model.isLoading {
+            if !model.hasLoaded && model.errorMessage == nil {
+                SplashView().transition(.opacity)
+            } else if model.isLoading {
                 ProgressView()
                     .progressViewStyle(.circular)
                     .tint(.white)
@@ -44,8 +46,8 @@ struct StremioHostView: View {
             if let message = model.errorMessage {
                 RetryView(message: message) { model.reload() }
             }
-
         }
+        .animation(.easeOut(duration: 0.3), value: model.hasLoaded)
         #if VLC_SELFTEST
             .onAppear {
                 // Replays the real raw stream through the same cookie path as a Play tap.

@@ -75,6 +75,8 @@ struct WebView: UIViewRepresentable {
         }
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
             model.isLoading = false
+            // The web app draws its first screen just after the load event.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { self.model.hasLoaded = true }
         }
         func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
             handleFailure(error)
