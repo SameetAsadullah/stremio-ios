@@ -1,75 +1,186 @@
-# Stremio iOS App (unofficial)
+# Stremio for iOS
 
-A native iPhone/iPad app for [Stremio](https://www.stremio.com), built around the **real Stremio
-web app** with a **VLC player** underneath — so streams Safari can't play (MKV, x265/HEVC,
-AC3/EAC3/DTS, multi-audio) just work. It runs Stremio's **streaming server on the device
-itself**, so torrents play with no home server and no debrid. Because it's the official web UI, it
-stays current whenever Stremio ships updates; only the server + playback are native.
+![Platform](https://img.shields.io/badge/platform-iOS%2017%2B-lightgrey)
+![Swift](https://img.shields.io/badge/Swift-5-orange)
+![License](https://img.shields.io/badge/license-MIT-blue)
 
-> Unofficial. Not affiliated with or endorsed by Stremio. Bring your own streams/addons.
+A personal iOS app that runs [Stremio](https://www.stremio.com) on an iPhone or iPad, with torrent
+streaming on the device itself.
+
+> [!IMPORTANT]
+> This is an unofficial, personal project. It is not affiliated with or endorsed by Stremio.
+> The app uses Stremio's own web app and Stremio's own streaming server (`server.js`), which it
+> downloads from Stremio at first launch. This repository contains only the iOS app that runs
+> them on iOS. It is not for App Store distribution. You are responsible for what you stream.
+
+## Why
+
+The Stremio app in the App Store does not stream torrents. The full app is only available through
+AltStore PAL in the EU and Japan. This app runs the same streaming server inside the app, so
+torrents play on the phone without a computer, a home server or a debrid service.
 
 ## Features
 
-- Official Stremio web UI (`web.stremio.com`)
-- Native VLC playback: MKV, HEVC/x265 (hardware-decoded on device), AC3/DTS/EAC3, any container
-- **Audio & subtitle track pickers** for multi-audio releases
-- Tap to show/hide controls · double-tap or ⤢ for Fit / Fill · pinch to zoom · ±10 s · scrub
-- Cold torrents don't error out: the app holds the connection and shows live buffering
-  ("Buffering from 23 sources · 2.1 MB/s") until data flows
-- Skips the server-side ffmpeg transcode entirely — VLC plays the raw file, keeping your
-  streaming server's CPU free
-- Close works instantly, even mid-buffer
+- The official Stremio web app, so the interface stays current with Stremio's releases.
+- Stremio's streaming server runs on the device, on `127.0.0.1:11470`.
+- Native VLC playback: MKV, HEVC/x265 with hardware decoding, AC3, EAC3, DTS and multiple audio
+  tracks.
+- Audio and subtitle track pickers. Subtitles from Stremio subtitle add-ons load into VLC.
+- Player controls: tap to show or hide, double-tap for fit or fill, pinch to zoom, skip 10 s,
+  scrub.
+- Live buffering status for cold torrents, for example "Buffering from 23 sources · 2.1 MB/s".
+- AirPlay mirroring and HDMI output: the phone decodes the video and sends it to the TV as an
+  external display.
+- Facebook and Apple login, add-on configuration pages and Trakt sign-in open in a Safari sheet.
 
 ## How it works
 
+```mermaid
+flowchart LR
+    subgraph App["iOS app"]
+        Web["WKWebView<br/>Stremio web app"]
+        Proxy["Loopback proxy<br/>127.0.0.1:11471"]
+        Server["server.js on nodejs-mobile<br/>127.0.0.1:11470"]
+        VLC["VLC player"]
+    end
+    Web -- "page and assets" --> Proxy
+    Proxy -- "mirror" --> StremioWeb[("web.stremio.com")]
+    Web -- "streaming API" --> Server
+    Web -- "Play: raw file URL" --> VLC
+    VLC -- "stream" --> Proxy
+    Proxy -- "relay" --> Server
+    Server -- "BitTorrent" --> Peers(("Peers"))
 ```
-Stremio web app (served from 127.0.0.1 by the app) → in-app server.js → VLC
-   └─ Play → injected JS grabs the raw file URL from the /hlsv2 request and cancels the transcode
-        └─ loopback relay (127.0.0.1) holds the connection while a cold torrent starts
-             └─ MobileVLCKit decodes natively → full-screen player
-```
 
-On first launch the app downloads Stremio's streaming server (`server.js`, about 7 MB) and checks
-its SHA-256. Downloads pause when the app is in the background (iOS limit).
+1. The loopback proxy serves `web.stremio.com` from `http://127.0.0.1`. An HTTPS page cannot call
+   the HTTP server on `127.0.0.1:11470`, but a page from `127.0.0.1` can.
+2. On first launch the app downloads `server.js` from Stremio and checks its SHA-256 before it
+   runs it with nodejs-mobile.
+3. When you press Play, injected JavaScript takes the raw file URL from Stremio's `/hlsv2`
+   request and cancels the server-side transcode. VLC plays the raw file.
+4. The proxy relays the stream to VLC. It holds the connection while a cold torrent starts and
+   resumes the stream after a break.
 
-## Play on a TV
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) has the details.
 
-- **AirPlay / HDMI (any file, any codec):** Control Center -> Screen Mirroring -> your Apple TV or
-  AirPlay TV (or plug in a USB-C/Lightning->HDMI adapter). The phone keeps decoding with VLC and
-  renders full-quality video onto the TV as an external display; you keep the controls. Works for
-  MKV / x265 / AC3 / DTS because the TV never decodes anything.
+## Requirements
 
-## Build & install
+- A Mac with Xcode (tested with Xcode 27.2)
+- [XcodeGen](https://github.com/yonaskolb/XcodeGen): `brew install xcodegen`
+- An iPhone or iPad with iOS 17 or later
+- An Apple ID. A free Apple ID signs the app for 7 days. A paid developer account signs it for 1
+  year.
+- About 1.5 GB of disk space for MobileVLCKit and nodejs-mobile
+
+## Getting started
 
 ```bash
-brew install xcodegen
-scripts/bootstrap.sh          # downloads MobileVLCKit and nodejs-mobile (gitignored)
-xcodegen generate
-open Stremio.xcodeproj        # Signing & Capabilities → pick your Team → Run on your iPhone
+git clone https://github.com/SameetAsadullah/stremio-ios.git
+cd stremio-ios
+make bootstrap   # downloads MobileVLCKit and nodejs-mobile and checks their SHA-256
 ```
 
-Or from the command line:
+Set your own signing values in `project.yml`:
+
+- `PRODUCT_BUNDLE_IDENTIFIER`: a bundle identifier that is unique to you
+- `DEVELOPMENT_TEAM`: your team ID from Xcode → Settings → Accounts
+
+Connect the device, then build and install:
 
 ```bash
-xcodebuild -project Stremio.xcodeproj -scheme Stremio -destination "id=<device-udid>" \
-  -derivedDataPath build-device DEVELOPMENT_TEAM=<TEAM_ID> CODE_SIGN_STYLE=Automatic \
-  -allowProvisioningUpdates build
-xcrun devicectl device install app --device <device-udid> \
-  build-device/Build/Products/Debug-iphoneos/Stremio.app
+xcrun devicectl list devices          # find the device identifier
+make install DEVICE=<device-id>
 ```
 
-Change `PRODUCT_BUNDLE_IDENTIFIER` in `project.yml` to your own. A free Apple ID signs for
-7 days; a paid developer team for a year.
+On the first launch, iOS can ask you to trust the developer. Go to Settings → General → VPN &
+Device Management and trust your Apple ID. iOS can also ask you to turn on Developer Mode in
+Settings → Privacy & Security.
 
-`VLC_SELFTEST` (Swift compilation condition) auto-plays a stream through the same
-proxy/VLC path — handy for iterating on the player without the UI.
+The app then downloads Stremio's streaming server (about 7 MB). Log in to Stremio and play.
 
-## Notes
+## Keep the app installed
 
-- The iOS Simulator has no hardware HEVC decoder, so 4K x265 stutters there. Real devices decode it in hardware.
-- If your streaming server sits on a small box, keep transcoding off — every web-player play
-  used to spawn an ffmpeg job that starved the torrent engine. This app never triggers it.
+A free Apple ID signs the app for 7 days. After that, the app does not open until you install it
+again.
+
+- `scripts/install-on-iphone.sh <device-id> [days-left]` builds `origin/main` from a separate
+  clean checkout and installs it. With `days-left`, it does nothing while the installed build has
+  more days left than that.
+- `scripts/setup-auto-reinstall.sh <device-id> [hour]` installs a launchd agent. The agent runs
+  the install script every day and reinstalls when 2 days or fewer are left.
+
+The Mac must be on, and the device must be on the same Wi-Fi network and unlocked.
+
+## Development
+
+| Command | Action |
+| --- | --- |
+| `make bootstrap` | Download the frameworks |
+| `make generate` | Generate `Stremio.xcodeproj` from `project.yml` |
+| `make build` | Build for a generic iOS device |
+| `make test` | Run the unit tests on a simulator |
+| `make format` | Format the Swift code with `swift-format` |
+| `make lint` | Check the Swift code with `swift-format` |
+| `make install DEVICE=<id>` | Build and install on a connected device |
+
+`Stremio.xcodeproj` and `Info.plist` are generated. Change `project.yml` instead, and run
+`make generate`.
+
+The app logs through `os.Logger` with the subsystem `com.sameetasadullah.stremio`. To see the
+logs, open Console.app and filter on that subsystem. The streaming server writes its own log to
+`Library/Caches/stremio-server.log` in the app container.
+
+[CONTRIBUTING.md](CONTRIBUTING.md) has the code style and the commit rules.
+
+## Project structure
+
+```
+stremio-ios/
+├── Stremio/
+│   ├── App/                  App entry, AppDelegate, root view, logging
+│   ├── Features/
+│   │   ├── Onboarding/       First-run screen that downloads the streaming server
+│   │   ├── Web/              Web view, injected scripts, Safari sheet for new windows
+│   │   ├── Player/           VLC player, tracks, gestures, buffering status
+│   │   └── ExternalDisplay/  AirPlay and HDMI output
+│   ├── Services/             Streaming server (nodejs-mobile) and loopback proxy
+│   └── Resources/            Assets and the injected JavaScript
+├── Tests/StremioTests/       Unit tests
+├── scripts/                  Framework download and reinstall scripts
+├── docs/                     Architecture
+├── project.yml               XcodeGen project definition
+└── Makefile
+```
+
+## Troubleshooting
+
+| Problem | Fix |
+| --- | --- |
+| The app does not open | The signing expired. Install the app again. |
+| "Untrusted Developer" | Settings → General → VPN & Device Management → trust your Apple ID. |
+| Facebook login fails | Stremio's web app waits about 25 seconds for the login. Tap Facebook again. |
+| "Streaming engine not downloaded" | Check the network connection and open the app again. |
+| A download stops in the background | iOS pauses the app in the background. Keep the app open. |
+| 4K HEVC stutters in the Simulator | The Simulator has no hardware HEVC decoder. Use a device. |
+
+## Security
+
+- The streaming server and the proxy accept connections only from the device itself
+  (`127.0.0.1`). Only the BitTorrent peer port is open to the network.
+- The app checks the SHA-256 of `server.js` before it runs it. `make bootstrap` checks the
+  SHA-256 of both frameworks.
+- Native requests outside the device must use HTTPS.
+
+[SECURITY.md](SECURITY.md) explains how to report a problem.
+
+## Acknowledgements
+
+- [Stremio](https://www.stremio.com): the web app and the streaming server
+- [VLCKit](https://code.videolan.org/videolan/VLCKit): the player
+- [nodejs-mobile](https://github.com/nodejs-mobile/nodejs-mobile): Node.js on iOS
+
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) lists the licenses.
 
 ## License
 
-MIT
+[MIT](LICENSE)
