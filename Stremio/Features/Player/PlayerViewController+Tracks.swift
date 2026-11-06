@@ -65,7 +65,30 @@ extension PlayerViewController {
         if embedded.count <= 1 && playback.externalSubtitles.isEmpty {
             items.append(Self.placeholder("No subtitles for this stream"))
         }
-        return items
+        return [subtitleSizeMenu(), UIMenu(options: .displayInline, children: items)]
+    }
+
+    private func subtitleSizeMenu() -> UIMenu {
+        let current = SubtitleSize.saved()
+        let sizes = SubtitleSize.allCases.map { size in
+            UIAction(title: size.title, state: size == current ? .on : .off) { _ in
+                size.save()
+                self.applySubtitleSize(size)
+            }
+        }
+        return UIMenu(
+            title: "Size", subtitle: current.title, image: UIImage(systemName: "textformat.size"),
+            children: sizes)
+    }
+
+    func applySubtitleSize(_ size: SubtitleSize) {
+        // VLCKit 3 implements this setter but leaves it out of its public headers.
+        let selector = NSSelectorFromString("setTextRendererFontSize:")
+        guard let player, player.responds(to: selector) else {
+            Log.player.error("VLC has no setTextRendererFontSize:, subtitle size not applied")
+            return
+        }
+        player.perform(selector, with: NSNumber(value: size.rawValue))
     }
 
     private static func placeholder(_ title: String) -> UIAction {

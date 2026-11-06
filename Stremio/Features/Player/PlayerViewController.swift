@@ -266,6 +266,7 @@ final class PlayerViewController: UIViewController {
         Log.player.info("VLC opening \(playURL.absoluteString) -> \(self.stream.url.absoluteString)")
         player.media = media
         player.delegate = self
+        applySubtitleSize(SubtitleSize.saved())
         try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .moviePlayback)
         applyRenderTarget(ExternalDisplay.shared.view)
         tvCancellable = ExternalDisplay.shared.$view
