@@ -4,6 +4,13 @@ All notable changes are listed here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- A torrent with few seeders starts to play as soon as its first data arrives. Before, VLC waited
+  for 4 MB at a time.
+
 ## [1.1.0] - 2026-11-06
 
 ### Added
@@ -53,5 +60,6 @@ All notable changes are listed here. The format follows
   both frameworks.
 - Native requests outside the device must use HTTPS.
 
+[Unreleased]: https://github.com/SameetAsadullah/stremio-ios/compare/v1.1.0...HEAD
 [1.1.0]: https://github.com/SameetAsadullah/stremio-ios/releases/tag/v1.1.0
 [1.0.0]: https://github.com/SameetAsadullah/stremio-ios/releases/tag/v1.0.0

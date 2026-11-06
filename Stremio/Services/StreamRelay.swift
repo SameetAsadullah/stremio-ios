@@ -41,6 +41,9 @@ struct ContentRange: Equatable {
 /// cached, a single response pulled hundreds of megabytes into memory within a second and iOS
 /// killed the app.
 ///
+/// Bytes go to VLC as they arrive. A torrent with few seeders can take minutes to fill one chunk,
+/// and VLC must not wait for all of it.
+///
 /// Cold torrents: the server cannot answer until it has the first pieces. VLC gives up after 3
 /// tries, so the first chunk is retried while the client connection stays open. A chunk that fails
 /// later is retried from the same offset, so a stalled torrent or a restarted server never reaches
@@ -66,7 +69,13 @@ final class StreamRelay: NSObject, URLSessionDataDelegate {
     // Touched only on `queue`.
     private var offset: Int64
     private var end: Int64?
+    /// Body of a response that is not relayed: an error, or a chunk at an unexpected offset.
     private var buffer = Data()
+    /// The current response is a 206 at `offset`, so its bytes go to VLC as they arrive.
+    private var relaying = false
+    private var chunkBytes: Int64 = 0
+    private var chunkComplete = false
+    private var pendingSends = 0
     private var oversized = false
     private var headWritten = false
     private var failures = 0
@@ -129,23 +138,56 @@ final class StreamRelay: NSObject, URLSessionDataDelegate {
                 "bytes=\(offset)-\(Self.chunkEnd(offset: offset, end: end))", forHTTPHeaderField: "Range")
         }
         buffer.removeAll(keepingCapacity: true)
+        relaying = false
+        chunkBytes = 0
+        chunkComplete = false
         oversized = false
         session.dataTask(with: request).resume()
     }
 
+    func urlSession(
+        _ session: URLSession, dataTask: URLSessionDataTask, didReceive response: URLResponse,
+        completionHandler: @escaping (URLSession.ResponseDisposition) -> Void
+    ) {
+        if !isHead, !finished, let http = response as? HTTPURLResponse, http.statusCode == 206,
+            let range = ContentRange.parse(http.value(forHTTPHeaderField: "Content-Range")),
+            range.start == offset
+        {
+            writeHeadIfNeeded(http, total: range.total)
+            relaying = true
+        }
+        completionHandler(.allow)
+    }
+
     func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
-        buffer.append(data)
+        guard !finished else { return }
         // An origin that ignores Range would send the whole file. Stop it at one chunk.
-        if Int64(buffer.count) > Self.chunkSize {
+        if relaying {
+            chunkBytes += Int64(data.count)
+        } else {
+            buffer.append(data)
+        }
+        if max(chunkBytes, Int64(buffer.count)) > Self.chunkSize {
             oversized = true
             dataTask.cancel()
+            return
+        }
+        if relaying {
+            offset += Int64(data.count)
+            failures = 0
+            send(data)
         }
     }
 
     func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
         guard !finished else { return }
         if oversized {
-            fail(502, "Origin ignored the Range request")
+            if headWritten {
+                Log.proxy.error("stream at \(self.offset) got more than one chunk")
+                close()
+            } else {
+                fail(502, "Origin ignored the Range request")
+            }
             return
         }
         guard let http = task.response as? HTTPURLResponse, error == nil else {
@@ -156,9 +198,18 @@ final class StreamRelay: NSObject, URLSessionDataDelegate {
             relayHead(http)
             return
         }
+        if relaying {
+            if chunkBytes == 0 {
+                retry(reason: "empty chunk")
+            } else {
+                chunkComplete = true
+                advanceIfDone()
+            }
+            return
+        }
         switch http.statusCode {
         case 206:
-            deliver(http)
+            retry(reason: "unexpected chunk \(http.value(forHTTPHeaderField: "Content-Range") ?? "-")")
         case 502...504:
             retry(reason: "HTTP \(http.statusCode)")
         case 416 where !headWritten:
@@ -172,41 +223,43 @@ final class StreamRelay: NSObject, URLSessionDataDelegate {
         }
     }
 
-    private func deliver(_ http: HTTPURLResponse) {
-        guard let range = ContentRange.parse(http.value(forHTTPHeaderField: "Content-Range")),
-            range.start == offset, !buffer.isEmpty
-        else {
-            retry(reason: "unexpected chunk \(http.value(forHTTPHeaderField: "Content-Range") ?? "-")")
-            return
-        }
-        var payload = Data()
-        if !headWritten {
-            let last = min(end ?? range.total - 1, range.total - 1)
-            end = last
-            let head = Self.responseHead(
-                requested: requested, start: offset, end: last, total: range.total,
-                contentType: http.value(forHTTPHeaderField: "Content-Type"))
-            payload.append(Data(head.utf8))
-            headWritten = true
-            Log.proxy.debug("stream \(self.offset)-\(last)/\(range.total) started")
-        }
-        payload.append(buffer)
-        offset += Int64(buffer.count)
-        failures = 0
+    private func writeHeadIfNeeded(_ http: HTTPURLResponse, total: Int64) {
+        guard !headWritten else { return }
+        let last = min(end ?? total - 1, total - 1)
+        end = last
+        let head = Self.responseHead(
+            requested: requested, start: offset, end: last, total: total,
+            contentType: http.value(forHTTPHeaderField: "Content-Type"))
+        headWritten = true
+        Log.proxy.debug("stream \(self.offset)-\(last)/\(total) started")
+        send(Data(head.utf8))
+    }
+
+    private func send(_ data: Data) {
+        pendingSends += 1
         conn.send(
-            content: payload,
+            content: data,
             completion: .contentProcessed { [weak self] error in
-                guard let self else { return }
-                self.queue.addOperation {
+                self?.queue.addOperation {
+                    guard let self else { return }
+                    self.pendingSends -= 1
                     if error != nil {
                         self.close()
-                    } else if let end = self.end, self.offset > end {
-                        self.finish()
                     } else {
-                        self.fetch()
+                        self.advanceIfDone()
                     }
                 }
             })
+    }
+
+    /// Requests the next chunk once VLC has taken every byte of this one.
+    private func advanceIfDone() {
+        guard !finished, chunkComplete, pendingSends == 0 else { return }
+        if let end, offset > end {
+            finish()
+        } else {
+            fetch()
+        }
     }
 
     private func relayHead(_ http: HTTPURLResponse) {
