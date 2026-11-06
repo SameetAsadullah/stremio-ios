@@ -59,7 +59,7 @@ final class StreamProxy {
     private func listen(on desired: UInt16?) -> Bool {
         let params = NWParameters.tcp
         let wanted = desired.flatMap { NWEndpoint.Port(rawValue: $0) } ?? .any
-        params.requiredLocalEndpoint = NWEndpoint.hostPort(host: "0.0.0.0", port: wanted)
+        params.requiredLocalEndpoint = NWEndpoint.hostPort(host: "127.0.0.1", port: wanted)
         guard let l = try? NWListener(using: params) else {
             NSLog("[STREMIOAPP][proxy] failed to create listener"); return false
         }
@@ -139,7 +139,10 @@ final class StreamProxy {
             relay = Relay(conn: conn, request: r, followRedirects: false, maxAttempts: 45)
         } else {
             // Web mirror: same path/query on web.stremio.com.
-            guard let url = URL(string: target, relativeTo: Self.mirrorOrigin)?.absoluteURL else { conn.cancel(); return }
+            // An absolute or scheme-relative target would replace the mirror host.
+            guard target.hasPrefix("/"), !target.hasPrefix("//"),
+                  let url = URL(string: target, relativeTo: Self.mirrorOrigin)?.absoluteURL,
+                  url.host == Self.mirrorOrigin.host else { conn.cancel(); return }
             var r = URLRequest(url: url)
             r.httpMethod = (method == "HEAD") ? "HEAD" : "GET"
             for key in ["accept", "accept-language", "range", "if-none-match", "if-modified-since", "user-agent"] {
