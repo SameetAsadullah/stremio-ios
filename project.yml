@@ -14,6 +14,8 @@ targets:
       path: Stremio/Resources/Info.plist
       properties:
         CFBundleDisplayName: Stremio
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         UILaunchScreen:
           UIColorName: LaunchBackground
           UIImageName: LaunchLogo
