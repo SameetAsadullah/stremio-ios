@@ -93,22 +93,11 @@ final class NodeServer: ObservableObject {
         // Preload: route console output to a file we can read from Swift/`log show`.
         // server.js listens on all interfaces, which exposes it to everyone on the Wi-Fi.
         // Pin its HTTP ports (11470, with fallbacks to 11474) to loopback. Peer ports stay open.
-        let preloadPath = (caches as NSString).appendingPathComponent("stremio-preload.js")
-        let preload = """
-        const net=require('net'); const listen=net.Server.prototype.listen;
-        const ours=p=>(p=Number(p))>=11470&&p<=11474;
-        net.Server.prototype.listen=function(...a){
-          if(a[0]&&typeof a[0]==='object'&&ours(a[0].port)&&!a[0].host) a[0]=Object.assign({},a[0],{host:'127.0.0.1'});
-          else if(ours(a[0])&&typeof a[1]!=='string') a.splice(1,0,'127.0.0.1');
-          return listen.apply(this,a);
-        };
-        const fs=require('fs'); const L=\(jsString(logPath));
-        const w=(t,a)=>{try{fs.appendFileSync(L,new Date().toISOString().slice(11,19)+' '+t+' '+Array.prototype.map.call(a,String).join(' ')+'\\n')}catch(e){}};
-        console.log=function(){w('[log]',arguments)}; console.error=function(){w('[err]',arguments)}; console.warn=function(){w('[warn]',arguments)};
-        process.on('uncaughtException',e=>w('[uncaught]',[e&&e.stack||e])); process.on('unhandledRejection',e=>w('[rej]',[e&&e.stack||e]));
-        w('[boot]',['preload active, node '+process.version]);
-        """
-        try? preload.write(toFile: preloadPath, atomically: true, encoding: .utf8)
+        guard let preloadPath = UserScripts.url(named: "node-preload")?.path else {
+            assertionFailure("Missing bundled script node-preload.js")
+            return
+        }
+        setenv("STREMIO_LOG_PATH", logPath, 1)
         try? "===== BOOT =====\n".write(toFile: logPath, atomically: true, encoding: .utf8)
 
         NSLog("[STREMIOAPP][node] starting %@", serverJS)
@@ -117,10 +106,6 @@ final class NodeServer: ObservableObject {
         let code = cargs.withUnsafeMutableBufferPointer { node_start(Int32(args.count), $0.baseAddress) }
         cargs.forEach { free($0) }
         NSLog("[STREMIOAPP][node] exited with code %d", code)
-    }
-
-    private static func jsString(_ s: String) -> String {
-        "'" + s.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "'", with: "\\'") + "'"
     }
 }
 

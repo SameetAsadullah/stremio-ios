@@ -1,182 +1,6 @@
+import SafariServices
 import SwiftUI
 import WebKit
-import SafariServices
-
-/// Owns the WKWebView-driven state so SwiftUI can show loading/error chrome
-/// without the web view being torn down on every state change.
-final class WebViewModel: ObservableObject {
-    @Published var isLoading = true
-    @Published var errorMessage: String?
-    /// Background colour reported by the page, used to tint the safe-area chrome.
-    @Published var chromeColor: UIColor = UIColor(red: 0.055, green: 0.043, blue: 0.12, alpha: 1) // Stremio navy
-
-    let url: URL
-    let playback: PlaybackController
-    fileprivate weak var webView: WKWebView?
-
-    init(url: URL, playback: PlaybackController) {
-        self.url = url
-        self.playback = playback
-    }
-
-    func reload() {
-        errorMessage = nil
-        isLoading = true
-        webView?.load(URLRequest(url: url))
-    }
-
-    /// Hands the stream to VLC. Shared by the page interception and the self-test.
-    func play(url rawURL: URL, title: String) {
-        // Stremio's URL builder leaves a dangling '?'; libvlc's HTTP access can
-        // mis-handle an empty query, so strip it.
-        var s = rawURL.absoluteString
-        if s.hasSuffix("?") { s.removeLast() }
-        let url = URL(string: s) ?? rawURL
-        if playback.stream?.url == url { return }
-        playback.play(url: url, title: title)
-    }
-}
-
-// Injected into every page. Stremio plays through MSE (a blob: <video> source)
-// backed by the server's /hlsv2/ ffmpeg transcode, which is slow and stalls.
-// We watch fetch/XHR for that transcode request, pull out the RAW file URL it
-// wraps (the mediaURL= param), and hand THAT to native VLC — VLC decodes any
-// codec directly, skipping the transcode entirely. Plain <video src> (direct,
-// non-transcoded content) is caught as a fallback.
-private let interceptScript = """
-(function () {
-  if (window.__vlcHook) return; window.__vlcHook = true;
-
-  function toNative(url, title) {
-    try {
-      if (!url || url.indexOf('http') !== 0) return;
-      window.webkit.messageHandlers.vlc.postMessage(
-        JSON.stringify({ url: url, title: title || document.title || 'Stream' })
-      );
-    } catch (e) {}
-  }
-
-  // Stremio's subtitle addons answer .../subtitles/<type>/<id>...json with
-  // { subtitles: [{ lang, url }] }. The web player would use them; VLC can't
-  // see them, so relay the list to native and load them as playback slaves.
-  function isSubs(u) { return typeof u === 'string' && u.indexOf('/subtitles/') !== -1; }
-  function postSubs(json) {
-    try {
-      var list = (json && json.subtitles) || [], items = [];
-      for (var i = 0; i < list.length; i++) {
-        var t = list[i]; if (!t || !t.url) continue;
-        items.push({ lang: t.lang || t.language || '', url: t.url });
-      }
-      if (items.length) window.webkit.messageHandlers.vlc.postMessage(JSON.stringify({ kind: 'subtitles', items: items }));
-    } catch (e) {}
-  }
-
-  function isHls(u) {
-    return typeof u === 'string' && u.indexOf('/hlsv2/') !== -1 && u.indexOf('.m3u8') !== -1;
-  }
-
-  function rawFromHls(u) {
-    var key = 'mediaURL=';
-    var i = u.indexOf(key);
-    if (i === -1) return null;
-    var rest = u.substring(i + key.length);
-    var amp = rest.indexOf('&');
-    if (amp !== -1) rest = rest.substring(0, amp);
-    try { return decodeURIComponent(rest); } catch (e) { return rest; }
-  }
-
-  // Kill the web player so the server never starts the ffmpeg transcode: pause,
-  // mute, and drop any /hlsv2 <video> source (which would keep transcoding).
-  function stopWeb() {
-    try {
-      var vids = document.getElementsByTagName('video');
-      for (var i = 0; i < vids.length; i++) {
-        var v = vids[i];
-        try {
-          v.pause(); v.muted = true; v.removeAttribute('autoplay');
-          if (v.src && v.src.indexOf('/hlsv2/') !== -1) { v.removeAttribute('src'); v.load(); }
-        } catch (_) {}
-      }
-    } catch (e) {}
-  }
-
-  function grab(u) {
-    toNative(rawFromHls(u) || u);
-    stopWeb(); setTimeout(stopWeb, 300); setTimeout(stopWeb, 1200);
-  }
-
-  // fetch: intercept AND block the transcode manifest.
-  var origFetch = window.fetch;
-  if (origFetch) {
-    window.fetch = function (input, init) {
-      var u = (typeof input === 'string') ? input : (input && input.url);
-      if (isHls(u)) { grab(u); return Promise.reject(new DOMException('handled by native player', 'AbortError')); }
-      if (isSubs(u)) {
-        return origFetch.apply(this, arguments).then(function (r) {
-          try { r.clone().json().then(postSubs).catch(function () {}); } catch (e) {}
-          return r;
-        });
-      }
-      return origFetch.apply(this, arguments);
-    };
-  }
-
-  // XHR: same — mark in open(), then no-op the send() so it never hits the server.
-  var origOpen = XMLHttpRequest.prototype.open;
-  var origSend = XMLHttpRequest.prototype.send;
-  XMLHttpRequest.prototype.open = function (method, url) {
-    this.__hls = isHls(url); this.__subs = isSubs(url); this.__url = url;
-    return origOpen.apply(this, arguments);
-  };
-  XMLHttpRequest.prototype.send = function () {
-    if (this.__hls) { grab(this.__url); return; }
-    if (this.__subs) {
-      this.addEventListener('load', function () { try { postSubs(JSON.parse(this.responseText)); } catch (e) {} });
-    }
-    return origSend.apply(this, arguments);
-  };
-
-  // Fallback for direct (non-transcoded) <video src>.
-  var P = HTMLMediaElement.prototype, origPlay = P.play;
-  P.play = function () {
-    var src = this.currentSrc || this.src;
-    if (src && src.indexOf('blob:') !== 0 && src.indexOf('http') === 0) {
-      if (src.indexOf('/hlsv2/') !== -1) { grab(src); try { this.removeAttribute('src'); this.load(); } catch (e) {} }
-      else { toNative(src); try { this.pause(); this.muted = true; } catch (e) {} }
-      return Promise.resolve();
-    }
-    return origPlay.apply(this, arguments);
-  };
-})();
-"""
-
-private let bgColorScript = """
-(function () {
-  function report() {
-    try {
-      var el = document.querySelector('#root, .app, body') || document.body;
-      var c = getComputedStyle(el).backgroundColor;
-      if (c && c !== 'rgba(0, 0, 0, 0)' && c !== 'transparent') {
-        window.webkit.messageHandlers.bg.postMessage(c);
-      }
-    } catch (e) {}
-  }
-  report(); setTimeout(report, 800); setTimeout(report, 2500);
-})();
-"""
-
-private let pinLocalServerScript = """
-(function () {
-  try {
-    var U = 'http://127.0.0.1:11470/';
-    var raw = localStorage.getItem('profile');
-    if (raw) {
-      var p = JSON.parse(raw); p.settings = p.settings || {};
-      if (p.settings.streamingServerUrl !== U) { p.settings.streamingServerUrl = U; localStorage.setItem('profile', JSON.stringify(p)); }
-    }
-  } catch (e) {}
-})();
-"""
 
 struct WebView: UIViewRepresentable {
     @ObservedObject var model: WebViewModel
@@ -191,20 +15,20 @@ struct WebView: UIViewRepresentable {
         // .default() is a persistent store, so the Stremio login survives app restarts.
         config.websiteDataStore = .default()
 
-        let userScript = WKUserScript(source: interceptScript,
+        let userScript = WKUserScript(source: UserScripts.source(named: "intercept"),
                                       injectionTime: .atDocumentStart,
                                       forMainFrameOnly: false)
         config.userContentController.addUserScript(userScript)
         // Pin Stremio Web's streaming server to the in-app one, even if the
         // account has a different server URL synced into its settings.
-        config.userContentController.addUserScript(WKUserScript(source: pinLocalServerScript,
+        config.userContentController.addUserScript(WKUserScript(source: UserScripts.source(named: "pin-local-server"),
                                                                 injectionTime: .atDocumentStart,
                                                                 forMainFrameOnly: true))
         // Weak proxy: userContentController retains the handler strongly, and the
         // coordinator retains the web view — a direct add() would leak both.
         config.userContentController.add(WeakScriptHandler(context.coordinator), name: "vlc")
         config.userContentController.add(WeakScriptHandler(context.coordinator), name: "bg")
-        config.userContentController.addUserScript(WKUserScript(source: bgColorScript,
+        config.userContentController.addUserScript(WKUserScript(source: UserScripts.source(named: "background-color"),
                                                                 injectionTime: .atDocumentEnd,
                                                                 forMainFrameOnly: true))
 
@@ -301,14 +125,5 @@ struct WebView: UIViewRepresentable {
             let title = (obj["title"] as? String).flatMap { $0.isEmpty ? nil : $0 } ?? "Stream"
             model.play(url: url, title: title)
         }
-    }
-}
-
-/// Breaks the WKUserContentController → handler → web view retain cycle.
-private final class WeakScriptHandler: NSObject, WKScriptMessageHandler {
-    weak var target: WKScriptMessageHandler?
-    init(_ target: WKScriptMessageHandler) { self.target = target }
-    func userContentController(_ ucc: WKUserContentController, didReceive message: WKScriptMessage) {
-        target?.userContentController(ucc, didReceive: message)
     }
 }
