@@ -146,50 +146,29 @@ final class StreamProxy {
         let route = routes[token]
         lock.unlock()
 
-        let req: URLRequest
-        let relay: Relay
         if let route {
-            // Stream relay (retry on cold torrent).
-            var r = URLRequest(url: route.origin)
-            r.httpMethod = (method == "HEAD") ? "HEAD" : "GET"
-            if let range = headers["range"] { r.setValue(range, forHTTPHeaderField: "Range") }
-            r.setValue("StremioApp/1.0", forHTTPHeaderField: "User-Agent")
             Log.proxy.debug("\(method, privacy: .public) range=\(headers["range"] ?? "-", privacy: .public)")
-            req = r
-            relay = Relay(conn: conn, request: r, followRedirects: false, maxAttempts: 45)
-        } else {
-            guard let url = Self.mirrorURL(forTarget: target) else {
-                conn.cancel()
-                return
-            }
-            var r = URLRequest(url: url)
-            r.httpMethod = (method == "HEAD") ? "HEAD" : "GET"
-            for key in ["accept", "accept-language", "range", "if-none-match", "if-modified-since", "user-agent"] {
-                if let v = headers[key] { r.setValue(v, forHTTPHeaderField: key) }
-            }
-            req = r
-            relay = Relay(conn: conn, request: r, followRedirects: true, maxAttempts: 1)
+            StreamRelay(conn: conn, origin: route.origin, method: method, rangeHeader: headers["range"]).start()
+            return
         }
-        _ = req
-        relay.start()
+        guard let url = Self.mirrorURL(forTarget: target) else {
+            conn.cancel()
+            return
+        }
+        var r = URLRequest(url: url)
+        r.httpMethod = (method == "HEAD") ? "HEAD" : "GET"
+        for key in ["accept", "accept-language", "range", "if-none-match", "if-modified-since", "user-agent"] {
+            if let v = headers[key] { r.setValue(v, forHTTPHeaderField: key) }
+        }
+        Relay(conn: conn, request: r, followRedirects: true, maxAttempts: 1).start()
     }
 }
 
-/// Streams one origin response back over one client connection.
+/// Streams one web-mirror response back over one client connection. Streams for
+/// VLC go through `StreamRelay` instead, which bounds memory per chunk.
 ///
-/// Cold torrents: the streaming server can't answer until it has the first
-/// pieces and the edge returns 504 meanwhile. Rather than surfacing that to VLC
-/// (which gives up after 3 tries), hold the client connection and keep re-asking
-/// the origin until it produces data. Simple backpressure suspends the origin
-/// task when the client falls behind.
-///
-/// Mid-stream breaks get the same treatment. A two-hour film is one long origin
-/// response, and anything that interrupts it — the torrent starving for more
-/// than the 90 s request timeout, a dropped tunnel, a restarted server — used to
-/// end the client connection, which VLC reported as a playback error well into
-/// the film and which lost the viewer's position. Once the head is written the
-/// body is instead continued with `Range: bytes=<delivered>-` on a fresh leg, so
-/// the break never reaches VLC.
+/// If the origin breaks part-way through a body, the rest is requested with
+/// `Range: bytes=<delivered>-` on a fresh leg, so the client never sees the break.
 private final class Relay: NSObject, URLSessionDataDelegate {
     private let conn: NWConnection
     private let request: URLRequest

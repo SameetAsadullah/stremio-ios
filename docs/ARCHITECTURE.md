@@ -5,7 +5,7 @@ The app has 4 parts. They run in one process and talk to each other only over `1
 | Part | Code | Job |
 | --- | --- | --- |
 | Web app | `Stremio/Features/Web` | Shows Stremio's web app in a `WKWebView` and catches Play |
-| Loopback proxy | `Stremio/Services/StreamProxy.swift` | Serves the web app from `127.0.0.1` and relays streams to VLC |
+| Loopback proxy | `Stremio/Services/StreamProxy.swift`, `StreamRelay.swift` | Serves the web app from `127.0.0.1` and relays streams to VLC |
 | Streaming server | `Stremio/Services/NodeServer.swift` | Runs Stremio's `server.js` with nodejs-mobile |
 | Player | `Stremio/Features/Player` | Plays the stream with MobileVLCKit |
 
@@ -47,9 +47,10 @@ scheme-relative request targets.
    to the app and stops the web player, so the server never starts a transcode.
 3. `PlaybackController` opens the player. The player registers the URL with the proxy and gives
    VLC the proxy URL.
-4. The relay holds VLC's connection while the torrent has no data, and retries the server until
-   data arrives. If the stream breaks later, the relay continues it with a `Range` request, so
-   VLC does not see the break.
+4. The relay gets the stream from the server in 4 MB `Range` chunks. It requests the next chunk
+   only after VLC has taken the previous one, so the app holds about 4 MB per stream. While the
+   torrent has no data, the relay holds VLC's connection and retries the server. If a chunk
+   fails later, the relay requests it again, so VLC does not see the break.
 5. Until the first frame shows, the player reads `/<info hash>/stats.json` from the server every
    2 seconds and shows the peer count and the download speed.
 6. `intercept.js` also reads the responses of subtitle add-ons and sends the subtitle URLs to the
