@@ -85,6 +85,18 @@ final class PlayerViewController: UIViewController {
     override var prefersHomeIndicatorAutoHidden: Bool { true }
     override var supportedInterfaceOrientations: UIInterfaceOrientationMask { .allButUpsideDown }
 
+    /// Opens in landscape. Portrait still works when the viewer turns the phone.
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        requestOrientation(.landscape)
+    }
+
+    private func requestOrientation(_ orientations: UIInterfaceOrientationMask) {
+        view.window?.windowScene?.requestGeometryUpdate(.iOS(interfaceOrientations: orientations)) { error in
+            Log.player.error("orientation request failed: \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .black
@@ -439,6 +451,8 @@ final class PlayerViewController: UIViewController {
         closed = true
         reportTime(seek: true)
         stopPlayerAsync()  // detached, non-blocking
+        // Back to portrait for Stremio's pages, unless the phone is held sideways.
+        if !UIDevice.current.orientation.isLandscape { requestOrientation(.portrait) }
         onClose()  // dismiss immediately
     }
 
