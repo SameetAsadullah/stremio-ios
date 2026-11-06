@@ -3,8 +3,8 @@ import Network
 
 /// Loopback HTTP proxy on 127.0.0.1 with two jobs:
 ///
-/// 1. **Streams** — VLC can't send the site's SSO cookie, so it fetches from
-///    localhost and we forward to the origin with the cookie, relaying Range/206.
+/// 1. **Streams** — VLC fetches from localhost and we relay Range/206 from the
+///    origin, holding the connection while a cold torrent starts.
 /// 2. **Web mirror (built-in mode)** — Stremio's web app is served from
 ///    `http://127.0.0.1:<port>/` by mirroring web.stremio.com. WebKit blocks an
 ///    https page from calling the in-app server at http://127.0.0.1:11470
@@ -14,7 +14,7 @@ final class StreamProxy {
     static let shared = StreamProxy()
     static let mirrorOrigin = URL(string: "https://web.stremio.com")!
 
-    private struct Route { let origin: URL; let cookie: String? }
+    private struct Route { let origin: URL }
     private var routes: [String: Route] = [:]
     private var listener: NWListener?
     private(set) var port: UInt16 = 0
@@ -28,10 +28,10 @@ final class StreamProxy {
     }
 
     /// Returns the loopback URL VLC should open for `origin`.
-    func register(origin: URL, cookie: String?) -> URL {
+    func register(origin: URL) -> URL {
         startIfNeeded()
         let token = UUID().uuidString
-        lock.lock(); routes[token] = Route(origin: origin, cookie: cookie); lock.unlock()
+        lock.lock(); routes[token] = Route(origin: origin); lock.unlock()
         return URL(string: "http://127.0.0.1:\(port)/\(token)")!
     }
 
@@ -128,11 +128,10 @@ final class StreamProxy {
         let req: URLRequest
         let relay: Relay
         if let route {
-            // Stream relay (cookie-authenticated, retry on cold torrent).
+            // Stream relay (retry on cold torrent).
             var r = URLRequest(url: route.origin)
             r.httpMethod = (method == "HEAD") ? "HEAD" : "GET"
             if let range = headers["range"] { r.setValue(range, forHTTPHeaderField: "Range") }
-            if let cookie = route.cookie { r.setValue(cookie, forHTTPHeaderField: "Cookie") }
             r.setValue("StremioApp/1.0", forHTTPHeaderField: "User-Agent")
             NSLog("[STREMIOAPP][proxy] %@ range=%@", method, headers["range"] ?? "-")
             req = r

@@ -25,37 +25,15 @@ final class WebViewModel: ObservableObject {
         webView?.load(URLRequest(url: url))
     }
 
-    /// Looks up the site cookies (SSO) and hands the stream to VLC.
-    /// Shared by the page interception and the self-test.
-    func playWithCookies(url rawURL: URL, title: String) {
+    /// Hands the stream to VLC. Shared by the page interception and the self-test.
+    func play(url rawURL: URL, title: String) {
         // Stremio's URL builder leaves a dangling '?'; libvlc's HTTP access can
         // mis-handle an empty query, so strip it.
         var s = rawURL.absoluteString
         if s.hasSuffix("?") { s.removeLast() }
         let url = URL(string: s) ?? rawURL
         if playback.stream?.url == url { return }
-
-        guard let webView else {
-            playback.play(url: url, title: title, cookieHeader: nil)
-            return
-        }
-        webView.configuration.websiteDataStore.httpCookieStore.getAllCookies { cookies in
-            let host = url.host ?? ""
-            let matched = cookies.filter { WebViewModel.cookie($0, matchesHost: host) }
-            let header = matched.map { "\($0.name)=\($0.value)" }.joined(separator: "; ")
-            NSLog("[STREMIOAPP] play host=%@ matchedCookies=%d/%d headerLen=%d",
-                  host, matched.count, cookies.count, header.count)
-            DispatchQueue.main.async {
-                self.playback.play(url: url, title: title,
-                                   cookieHeader: header.isEmpty ? nil : header)
-            }
-        }
-    }
-
-    // fileprivate so the initial-load cookie check in WebView can reuse it.
-    fileprivate static func cookie(_ cookie: HTTPCookie, matchesHost host: String) -> Bool {
-        let domain = cookie.domain.hasPrefix(".") ? String(cookie.domain.dropFirst()) : cookie.domain
-        return host == domain || host.hasSuffix("." + domain)
+        playback.play(url: url, title: title)
     }
 }
 
@@ -210,21 +188,18 @@ struct WebView: UIViewRepresentable {
         config.allowsInlineMediaPlayback = true
         config.mediaTypesRequiringUserActionForPlayback = []
         config.allowsPictureInPictureMediaPlayback = true
-        // .default() is a persistent store, so the SSO cookie and the
-        // Stremio login survive app restarts — no re-login on every launch.
+        // .default() is a persistent store, so the Stremio login survives app restarts.
         config.websiteDataStore = .default()
 
         let userScript = WKUserScript(source: interceptScript,
                                       injectionTime: .atDocumentStart,
                                       forMainFrameOnly: false)
         config.userContentController.addUserScript(userScript)
-        if AppSettings.mode == .builtIn {
-            // Pin Stremio Web's streaming server to the in-app one, even if the
-            // account has a different server URL synced into its settings.
-            config.userContentController.addUserScript(WKUserScript(source: pinLocalServerScript,
-                                                                    injectionTime: .atDocumentStart,
-                                                                    forMainFrameOnly: true))
-        }
+        // Pin Stremio Web's streaming server to the in-app one, even if the
+        // account has a different server URL synced into its settings.
+        config.userContentController.addUserScript(WKUserScript(source: pinLocalServerScript,
+                                                                injectionTime: .atDocumentStart,
+                                                                forMainFrameOnly: true))
         // Weak proxy: userContentController retains the handler strongly, and the
         // coordinator retains the web view — a direct add() would leak both.
         config.userContentController.add(WeakScriptHandler(context.coordinator), name: "vlc")
@@ -243,31 +218,7 @@ struct WebView: UIViewRepresentable {
         webView.scrollView.backgroundColor = webView.backgroundColor
 
         model.webView = webView
-        // .default() hydrates its cookie store from disk asynchronously, and the
-        // network process only sees the SSO cookie once that finishes. Navigating
-        // straight away races it: when the load wins, the first request carries no
-        // cookie, the gateway bounces to the login page, and the app looks logged
-        // out even though the session is still valid — intermittently, because a
-        // cold start is slower to hydrate than a warm one. Touching the store
-        // forces it to load and hands us a completion that runs on the main queue
-        // once the cookies are live, so the first navigation always carries them.
-        let request = URLRequest(url: model.url)
-        var navigated = false
-        let navigate: (String) -> Void = { [weak webView] why in
-            guard !navigated, let webView else { return }
-            navigated = true
-            webView.load(request)
-            NSLog("[STREMIOAPP] initial load (%@) %@", why, model.url.absoluteString)
-        }
-        config.websiteDataStore.httpCookieStore.getAllCookies { cookies in
-            let host = model.url.host ?? ""
-            let matched = cookies.filter { WebViewModel.cookie($0, matchesHost: host) }
-            NSLog("[STREMIOAPP] cookie store ready: %d total, %d for %@",
-                  cookies.count, matched.count, host)
-            navigate("cookies ready")
-        }
-        // Safety net: never leave a blank screen if that callback is not delivered.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3) { navigate("timeout") }
+        webView.load(URLRequest(url: model.url))
         return webView
     }
 
@@ -348,7 +299,7 @@ struct WebView: UIViewRepresentable {
             guard let urlString = obj["url"] as? String, let url = URL(string: urlString) else { return }
             NSLog("[STREMIOAPP] intercepted=%@", urlString)
             let title = (obj["title"] as? String).flatMap { $0.isEmpty ? nil : $0 } ?? "Stream"
-            model.playWithCookies(url: url, title: title)
+            model.play(url: url, title: title)
         }
     }
 }

@@ -22,13 +22,11 @@
 		616FC9A0F0ACAEE7A6C76392 /* libbz2.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 179BD332B3C98A2F490FE479 /* libbz2.tbd */; };
 		6725616B0CEF345E923140EB /* NodeMobile.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = A0727DD6A40AD7C1624366E6 /* NodeMobile.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		6DC108E4BFB5C5E79FA47B1D /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF7CEEDD36F3B6D9682B7AFF /* ContentView.swift */; };
-		715B12808AEFB7A4D8E0E1CF /* Settings.bundle in Resources */ = {isa = PBXBuildFile; fileRef = 49F83A1086332772062EE2C1 /* Settings.bundle */; };
 		824A0D666D0A1CDAF17B5C1A /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 45CE31144294F32A128B9CB5 /* CoreAudio.framework */; };
 		8727CED9179928FA3C8AE57B /* CoreVideo.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 01EB880453E2AD8000160DFA /* CoreVideo.framework */; };
 		89428090FA187365E3A71E77 /* WebView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 121D273AC982D87DC99C98A8 /* WebView.swift */; };
 		8A40E90F39D092777D7021AE /* libz.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = D8F7764589FA6767AC6F7183 /* libz.tbd */; };
 		8AC8876712FC2A3F721DDDC2 /* QuartzCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1B40A2DA69AFBCCA38899132 /* QuartzCore.framework */; };
-		A0A9416F55F2449F0A82CC26 /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = A072293CACFECFDBFA81BA68 /* AppSettings.swift */; };
 		A78F3AB2792333AF77529D33 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F1C683877EF860348734561 /* OnboardingView.swift */; };
 		A8814BC78E54F1373D7A6483 /* Playback.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4738EF04B65EEE571CB9E061 /* Playback.swift */; };
 		B34274343DBEE21918A0B042 /* OpenGLES.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B82CED1B096BBB7156C07373 /* OpenGLES.framework */; };
@@ -72,14 +70,12 @@
 		458B78D00A52C54DEBC59300 /* Security.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Security.framework; path = System/Library/Frameworks/Security.framework; sourceTree = SDKROOT; };
 		45CE31144294F32A128B9CB5 /* CoreAudio.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreAudio.framework; path = System/Library/Frameworks/CoreAudio.framework; sourceTree = SDKROOT; };
 		4738EF04B65EEE571CB9E061 /* Playback.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Playback.swift; sourceTree = "<group>"; };
-		49F83A1086332772062EE2C1 /* Settings.bundle */ = {isa = PBXFileReference; lastKnownFileType = wrapper.cfbundle; path = Settings.bundle; sourceTree = "<group>"; };
 		5F1C683877EF860348734561 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		705470C06840FADEB5554AE8 /* AVFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AVFoundation.framework; path = System/Library/Frameworks/AVFoundation.framework; sourceTree = SDKROOT; };
 		71D9AE3826C05CF2D5A398BE /* StreamProxy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamProxy.swift; sourceTree = "<group>"; };
 		79FABE35DEDDB64E23A7A7C1 /* libiconv.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libiconv.tbd; path = usr/lib/libiconv.tbd; sourceTree = SDKROOT; };
 		9EF374328C931E3B7944E050 /* ExternalDisplay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExternalDisplay.swift; sourceTree = "<group>"; };
 		9FA81F3C8296E9EB1AD424ED /* CoreText.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreText.framework; path = System/Library/Frameworks/CoreText.framework; sourceTree = SDKROOT; };
-		A072293CACFECFDBFA81BA68 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
 		A0727DD6A40AD7C1624366E6 /* NodeMobile.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = NodeMobile.xcframework; path = "Frameworks/nodejs-mobile/NodeMobile.xcframework"; sourceTree = "<group>"; };
 		A7A8C5AEBFB002666603D173 /* Stremio-Bridging.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Stremio-Bridging.h"; sourceTree = "<group>"; };
 		B5E444C91DFD56A204F50CCF /* VideoToolbox.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = VideoToolbox.framework; path = System/Library/Frameworks/VideoToolbox.framework; sourceTree = SDKROOT; };
@@ -126,7 +122,6 @@
 			isa = PBXGroup;
 			children = (
 				36C8B9B03A3517833CD7D889 /* Assets.xcassets */,
-				49F83A1086332772062EE2C1 /* Settings.bundle */,
 				B5D87D550BB113A0B6EFF6D9 /* Sources */,
 				E136A0A928A5FDE791B62828 /* Frameworks */,
 				E956DB55FADD216406AC7900 /* Products */,
@@ -136,7 +131,6 @@
 		B5D87D550BB113A0B6EFF6D9 /* Sources */ = {
 			isa = PBXGroup;
 			children = (
-				A072293CACFECFDBFA81BA68 /* AppSettings.swift */,
 				CF7CEEDD36F3B6D9682B7AFF /* ContentView.swift */,
 				9EF374328C931E3B7944E050 /* ExternalDisplay.swift */,
 				0C27EE54F759BC84A6A99BB5 /* Info.plist */,
@@ -248,7 +242,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				5E8D0311044B1A984389C438 /* Assets.xcassets in Resources */,
-				715B12808AEFB7A4D8E0E1CF /* Settings.bundle in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -259,7 +252,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				A0A9416F55F2449F0A82CC26 /* AppSettings.swift in Sources */,
 				6DC108E4BFB5C5E79FA47B1D /* ContentView.swift in Sources */,
 				4926A9A9F96962161D12CE8F /* ExternalDisplay.swift in Sources */,
 				1F07D03915B193722D09E6C5 /* NodeServer.swift in Sources */,

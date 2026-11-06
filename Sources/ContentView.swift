@@ -1,23 +1,11 @@
 import SwiftUI
 
 struct ContentView: View {
-    @AppStorage(AppSettings.onboardedKey) private var onboarded = false
-    private static var isSelfTest: Bool {
-        #if VLC_SELFTEST
-        return true
-        #else
-        return false
-        #endif
-    }
+    /// The first-run screen downloads the streaming engine, so show it only while the engine is missing.
+    @State private var engineReady = ServerScript.localPath() != nil
 
     var body: some View {
-        Group {
-            if onboarded || Self.isSelfTest { StremioHostView() } else { OnboardingView { onboarded = true } }
-        }
-        .onAppear {
-            AppSettings.consumeResetIfRequested()
-            onboarded = UserDefaults.standard.bool(forKey: AppSettings.onboardedKey)
-        }
+        if engineReady { StremioHostView() } else { OnboardingView { engineReady = true } }
     }
 }
 
@@ -31,7 +19,7 @@ struct StremioHostView: View {
         let playback = PlaybackController()
         _playback = StateObject(wrappedValue: playback)
         _model = StateObject(wrappedValue: WebViewModel(
-            url: AppSettings.webURL,
+            url: StreamProxy.shared.mirrorBaseURL,
             playback: playback
         ))
     }
@@ -62,14 +50,12 @@ struct StremioHostView: View {
             // Replays the real raw stream through the same cookie path as a Play tap.
             guard let raw = ProcessInfo.processInfo.environment["STREMIO_SELFTEST_URL"], let url = URL(string: raw) else { return }
             DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
-                model.playWithCookies(url: url, title: "Self-test stream")
+                model.play(url: url, title: "Self-test stream")
             }
         }
         #endif
         .onAppear {
-            if AppSettings.mode == .builtIn {
-                ServerScript.ensure(progress: { _ in }) { ok in if ok { NodeServer.shared.startIfNeeded() } }
-            }
+            ServerScript.ensure(progress: { _ in }) { ok in if ok { NodeServer.shared.startIfNeeded() } }
         }
         .fullScreenCover(item: $playback.stream) { stream in
             VLCPlayerContainer(stream: stream, playback: playback) { playback.stop() }

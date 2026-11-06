@@ -11,9 +11,6 @@ final class PlaybackController: ObservableObject {
         let id = UUID()
         let url: URL
         let title: String
-        /// Cookie string copied from the web view so VLC's HTTP access is
-        /// authenticated against your SSO the same way the page is.
-        let cookieHeader: String?
     }
 
     struct ExternalSubtitle: Identifiable, Equatable {
@@ -26,8 +23,8 @@ final class PlaybackController: ObservableObject {
     /// Subtitles offered by Stremio's subtitle addons for the current item.
     @Published var externalSubtitles: [ExternalSubtitle] = []
 
-    func play(url: URL, title: String, cookieHeader: String?) {
-        stream = Stream(url: url, title: title, cookieHeader: cookieHeader)
+    func play(url: URL, title: String) {
+        stream = Stream(url: url, title: title)
     }
 
     func addExternalSubtitles(_ items: [ExternalSubtitle]) {
@@ -298,14 +295,13 @@ final class VLCPlayerViewController: UIViewController, VLCMediaPlayerDelegate, U
         VLCLibrary.shared().loggers = [Self.vlcLogger]
         player = VLCMediaPlayer()
 
-        // VLC can't carry the SSO cookie itself; the loopback proxy adds it.
-        let playURL = StreamProxy.shared.register(origin: stream.url, cookie: stream.cookieHeader)
+        // The loopback relay holds VLC's connection while a cold torrent starts.
+        let playURL = StreamProxy.shared.register(origin: stream.url)
         let media = VLCMedia(url: playURL)
         media.addOption(":network-caching=4000")
         media.addOption(":avcodec-skiploopfilter=3")
         media.addOption(":avcodec-threads=0")
-        NSLog("[STREMIOAPP] VLC opening %@ -> %@ cookie=%@", playURL.absoluteString,
-              stream.url.absoluteString, (stream.cookieHeader?.isEmpty == false) ? "yes" : "no")
+        NSLog("[STREMIOAPP] VLC opening %@ -> %@", playURL.absoluteString, stream.url.absoluteString)
         player.media = media
         player.delegate = self
         try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .moviePlayback)
@@ -561,9 +557,7 @@ final class VLCPlayerViewController: UIViewController, VLCMediaPlayerDelegate, U
         statsTimer?.invalidate()
         statsTimer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in
             guard let self, !self.hasRenderedFrame else { return }
-            var req = URLRequest(url: url)
-            if let cookie = self.stream.cookieHeader { req.setValue(cookie, forHTTPHeaderField: "Cookie") }
-            URLSession.shared.dataTask(with: req) { data, _, _ in
+            URLSession.shared.dataTask(with: url) { data, _, _ in
                 guard let data, let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return }
                 let peers = json["peers"] as? Int ?? 0
                 let speed = (json["downloadSpeed"] as? Double ?? 0) / 1_000_000
