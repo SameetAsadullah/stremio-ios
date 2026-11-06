@@ -101,6 +101,10 @@ final class NodeServer: ObservableObject {
             return
         }
         setenv("STREMIO_LOG_PATH", logPath, 1)
+        // Keep the previous run's log: after a crash the app starts again and would overwrite it.
+        let previousLog = (cachesDir as NSString).appendingPathComponent("stremio-server.prev.log")
+        try? FileManager.default.removeItem(atPath: previousLog)
+        try? FileManager.default.moveItem(atPath: logPath, toPath: previousLog)
         try? "===== BOOT =====\n".write(toFile: logPath, atomically: true, encoding: .utf8)
 
         Log.server.info("starting \(serverJS, privacy: .public)")
