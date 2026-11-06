@@ -18,6 +18,19 @@ final class WebViewModel: ObservableObject {
     init(url: URL, playback: PlaybackController) {
         self.url = url
         self.playback = playback
+        playback.onProgress = { [weak self] in self?.sendProgress($0) }
+    }
+
+    /// Passes the player's progress to Stremio's core through `intercept.js`.
+    private func sendProgress(_ event: PlaybackController.ProgressEvent) {
+        let call: String
+        switch event {
+        case .time(let time, let duration): call = "time(\(time), \(duration))"
+        case .seek(let time, let duration): call = "seek(\(time), \(duration))"
+        case .paused(let paused): call = "paused(\(paused))"
+        case .ended: call = "ended()"
+        }
+        webView?.evaluateJavaScript("window.__stremioVLC && window.__stremioVLC.\(call)")
     }
 
     func reload() {
@@ -43,9 +56,9 @@ final class WebViewModel: ObservableObject {
     }
 
     /// Hands the stream to VLC. Shared by the page interception and the self-test.
-    func play(url rawURL: URL, title: String) {
+    func play(url rawURL: URL, title: String, startTime: Int = 0) {
         let url = Self.cleanedStreamURL(rawURL)
         if playback.stream?.url == url { return }
-        playback.play(url: url, title: title)
+        playback.play(url: url, title: title, startTime: startTime)
     }
 }

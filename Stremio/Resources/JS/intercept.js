@@ -7,13 +7,45 @@
 (function () {
   if (window.__vlcHook) return; window.__vlcHook = true;
 
-  function toNative(url, title) {
+  function toNative(url, title, time) {
     try {
       if (!url || url.indexOf('http') !== 0) return;
       window.webkit.messageHandlers.vlc.postMessage(
-        JSON.stringify({ url: url, title: title || document.title || 'Stream' })
+        JSON.stringify({ url: url, title: title || document.title || 'Stream', time: time || 0 })
       );
     } catch (e) {}
+  }
+
+  // Watch progress. The web player never plays, so the app reports VLC's position to Stremio's
+  // core with the same actions the web player sends. The core saves it to the library item,
+  // which feeds Continue Watching and resume. Times are in milliseconds.
+  function dispatchPlayer(args) {
+    try { if (window.core) window.core.dispatch({ action: 'Player', args: args }, 'player'); } catch (e) {}
+  }
+  window.__stremioVLC = {
+    time: function (time, duration) {
+      dispatchPlayer({ action: 'TimeChanged', args: { time: time, duration: duration, device: 'VLC' } });
+    },
+    // TimeChanged only moves the saved position forward. Seek sets it in both directions.
+    seek: function (time, duration) {
+      dispatchPlayer({ action: 'Seek', args: { time: time, duration: duration, device: 'VLC' } });
+    },
+    paused: function (paused) { dispatchPlayer({ action: 'PausedChanged', args: { paused: paused } }); },
+    ended: function () { dispatchPlayer({ action: 'Ended' }); }
+  };
+
+  // The saved position, read the same way the web player does: only when the library item's
+  // last video is the one about to play.
+  function resumeTime() {
+    var read = Promise.resolve(window.core ? window.core.getState('player') : null).then(function (p) {
+      var item = p && p.libraryItem, req = p && p.selected && p.selected.streamRequest;
+      if (item && item.state && req && req.path && item.state.video_id === req.path.id) {
+        return item.state.timeOffset || 0;
+      }
+      return 0;
+    });
+    var timeout = new Promise(function (resolve) { setTimeout(function () { resolve(0); }, 1500); });
+    return Promise.race([read, timeout]).catch(function () { return 0; });
   }
 
   // Stremio's subtitle addons answer .../subtitles/<type>/<id>...json with
@@ -61,7 +93,8 @@
   }
 
   function grab(u) {
-    toNative(rawFromHls(u) || u);
+    var raw = rawFromHls(u) || u;
+    resumeTime().then(function (time) { toNative(raw, null, time); });
     stopWeb(); setTimeout(stopWeb, 300); setTimeout(stopWeb, 1200);
   }
 

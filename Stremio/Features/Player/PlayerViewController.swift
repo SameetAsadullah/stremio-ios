@@ -40,6 +40,9 @@ final class PlayerViewController: UIViewController {
     var statsTimer: Timer?
     var isScrubbing = false
     var hasRenderedFrame = false
+    var lastReportedTime = 0
+    /// Last VLC time and the wall clock at that moment, to tell a seek from normal playback.
+    var lastObserved: (time: Int, at: Date)?
     private var closed = false
 
     var zoom: CGFloat = 1  // 1 = fit; >1 zoomed/filled
@@ -76,6 +79,8 @@ final class PlayerViewController: UIViewController {
         setupSpinner()
         setupControls()
         startPlayback()
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(saveProgress), name: UIApplication.willResignActiveNotification, object: nil)
     }
 
     // MARK: - Layout
@@ -263,6 +268,7 @@ final class PlayerViewController: UIViewController {
         media.addOption(":network-caching=4000")
         media.addOption(":avcodec-skiploopfilter=3")
         media.addOption(":avcodec-threads=0")
+        if stream.startTime > 0 { media.addOption(":start-time=\(Double(stream.startTime) / 1000)") }
         Log.player.info("VLC opening \(playURL.absoluteString) -> \(self.stream.url.absoluteString)")
         player.media = media
         player.delegate = self
@@ -330,11 +336,52 @@ final class PlayerViewController: UIViewController {
         controlsTimer?.invalidate()
     }
 
+    /// Sends the position to Stremio. Before the first frame, or while a restart seeks back, VLC
+    /// reports 0, which would overwrite the saved position.
+    func reportTime(seek: Bool = false) {
+        guard let player, hasRenderedFrame, pendingPosition == nil else { return }
+        let time = Int(player.time.intValue)
+        let duration = Int(player.media?.length.intValue ?? 0)
+        guard time > 0 else { return }
+        lastReportedTime = time
+        if seek {
+            playback.report(.seek(time, duration: duration))
+        } else {
+            playback.report(.time(time, duration: duration))
+        }
+    }
+
+    /// iOS can kill the app from the app switcher without notice, and Stremio writes the position
+    /// only on unload, on a pause change, or every 3 minutes. A pause change saves it at once.
+    @objc private func saveProgress() {
+        guard let player, hasRenderedFrame else { return }
+        reportTime(seek: true)
+        playback.report(.paused(!player.isPlaying))
+    }
+
+    /// Reports the position while VLC plays: as a seek when the time jumped, else every 5 s.
+    func trackProgress() {
+        guard let player, hasRenderedFrame, pendingPosition == nil else { return }
+        let time = Int(player.time.intValue)
+        let now = Date()
+        defer { lastObserved = (time, now) }
+        if let last = lastObserved {
+            let played = time - last.time
+            let elapsed = Int(now.timeIntervalSince(last.at) * 1000)
+            if abs(played - elapsed) > 3000 {
+                reportTime(seek: true)
+                return
+            }
+        }
+        if abs(time - lastReportedTime) >= 5000 { reportTime() }
+    }
+
     // MARK: - Actions
 
     @objc private func didTapClose() {
         guard !closed else { return }
         closed = true
+        reportTime(seek: true)
         stopPlayerAsync()  // detached, non-blocking
         onClose()  // dismiss immediately
     }

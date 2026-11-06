@@ -25,6 +25,8 @@ torrents play on the phone without a computer, a home server or a debrid service
 - Stremio's streaming server runs on the device, on `127.0.0.1:11470`.
 - Native VLC playback: MKV, HEVC/x265 with hardware decoding, AC3, EAC3, DTS and multiple audio
   tracks.
+- Watch progress syncs to your Stremio account: Continue Watching and resume work as in the
+  official apps.
 - Audio and subtitle track pickers. Subtitles from Stremio subtitle add-ons load into VLC.
 - Player controls: tap to show or hide, double-tap for fit or fill, pinch to zoom, skip 10 s,
   scrub.

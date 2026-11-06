@@ -55,6 +55,13 @@ scheme-relative request targets.
    2 seconds and shows the peer count and the download speed.
 6. `intercept.js` also reads the responses of subtitle add-ons and sends the subtitle URLs to the
    player. VLC loads them as extra subtitle tracks.
+7. Stremio's web player stays loaded behind VLC, so its core session for the item stays open.
+   `intercept.js` reads the saved position from that session, and VLC starts there. The player
+   sends its position to the core with the web player's own actions: `TimeChanged` every 5
+   seconds, `Seek` after a jump, and `PausedChanged`. The core saves the position and syncs it
+   to the Stremio account, so Continue Watching works on all devices.
+8. When VLC closes, the app goes back from the web player page. The core unloads the player and
+   saves the last position.
 
 ## New windows
 

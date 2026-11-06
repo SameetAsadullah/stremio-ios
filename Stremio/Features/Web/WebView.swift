@@ -141,7 +141,8 @@ struct WebView: UIViewRepresentable {
             guard let urlString = obj["url"] as? String, let url = URL(string: urlString) else { return }
             Log.web.debug("intercepted \(urlString)")
             let title = (obj["title"] as? String).flatMap { $0.isEmpty ? nil : $0 } ?? "Stream"
-            model.play(url: url, title: title)
+            let startTime = (obj["time"] as? NSNumber)?.intValue ?? 0
+            model.play(url: url, title: title, startTime: max(0, startTime))
         }
     }
 }
