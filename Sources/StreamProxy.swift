@@ -18,7 +18,7 @@ final class StreamProxy {
     private var routes: [String: Route] = [:]
     private var listener: NWListener?
     private(set) var port: UInt16 = 0
-    private let queue = DispatchQueue(label: "dev.woolston.stremio.proxy")
+    private let queue = DispatchQueue(label: "com.sameetasadullah.stremio.proxy")
     private let lock = NSLock()
 
     /// Base URL of the mirrored Stremio web app.
@@ -36,7 +36,7 @@ final class StreamProxy {
     }
 
     /// Where the last successful listen happened, so the next launch can reuse it.
-    private static let portDefaultsKey = "dev.woolston.stremio.proxyPort"
+    private static let portDefaultsKey = "com.sameetasadullah.stremio.proxyPort"
     /// First choice of port. 11470 belongs to the in-app streaming server.
     private static let preferredPort: UInt16 = 11471
 
