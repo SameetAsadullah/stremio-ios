@@ -547,8 +547,11 @@ final class VLCPlayerViewController: UIViewController, VLCMediaPlayerDelegate, U
 
     private func statsURL() -> URL? {
         let parts = stream.url.pathComponents.filter { $0 != "/" }
-        guard let hash = parts.first, hash.count == 40, let host = stream.url.host else { return nil }
-        return URL(string: "https://\(host)/\(hash)/stats.json")
+        guard let hash = parts.first, hash.count == 40,
+              var components = URLComponents(url: stream.url, resolvingAgainstBaseURL: false) else { return nil }
+        components.path = "/\(hash)/stats.json"
+        components.query = nil
+        return components.url
     }
 
     private func startStatsPolling() {
