@@ -201,9 +201,7 @@ final class PlayerViewController: UIViewController {
         configureIcon(skipForwardButton, "goforward.10", action: #selector(didTapSkipForward), size: 32)
         for b in [closeButton, playPauseButton, skipBackButton, skipForwardButton] { controls.addSubview(b) }
 
-        titleLabel.text = stream.title
-        titleLabel.textColor = .white
-        titleLabel.font = .systemFont(ofSize: 15, weight: .semibold)
+        titleLabel.numberOfLines = 2
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
         controls.addSubview(titleLabel)
 
@@ -286,6 +284,7 @@ final class PlayerViewController: UIViewController {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] v in self?.applyRenderTarget(v) }
         player.play()
+        loadStreamInfo()
         setupRemoteCommands()
         startStatsPolling()
         scheduleControlsHide()
@@ -391,6 +390,24 @@ final class PlayerViewController: UIViewController {
 
     @objc private func didTapClose() {
         close()
+    }
+
+    /// Show name with the episode under it. The page title is always "Stremio - Freedom to
+    /// Stream" on the player page, so the label stays empty until Stremio's info arrives.
+    func updateTitle() {
+        guard let name = streamInfo?.name else { return }
+        let text = NSMutableAttributedString(
+            string: name,
+            attributes: [.font: UIFont.systemFont(ofSize: 15, weight: .semibold), .foregroundColor: UIColor.white])
+        if let episode = streamInfo?.episode {
+            text.append(
+                NSAttributedString(
+                    string: "\n" + episode,
+                    attributes: [
+                        .font: UIFont.systemFont(ofSize: 13), .foregroundColor: UIColor.white.withAlphaComponent(0.7),
+                    ]))
+        }
+        titleLabel.attributedText = text
     }
 
     func close() {

@@ -53,7 +53,7 @@ extension PlayerViewController {
         guard let player, Self.nowPlayingOwner === self else { return }
         let episode = streamInfo?.episode
         var info: [String: Any] = [
-            MPMediaItemPropertyTitle: episode ?? streamInfo?.name ?? stream.title,
+            MPMediaItemPropertyTitle: episode ?? streamInfo?.name ?? "Stremio",
             MPNowPlayingInfoPropertyMediaType: MPNowPlayingInfoMediaType.video.rawValue,
             MPNowPlayingInfoPropertyPlaybackRate: player.isPlaying ? 1.0 : 0.0,
             MPNowPlayingInfoPropertyDefaultPlaybackRate: 1.0,

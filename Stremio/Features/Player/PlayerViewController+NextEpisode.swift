@@ -29,6 +29,7 @@ extension PlayerViewController {
             DispatchQueue.main.async {
                 guard let self, let info else { return }
                 self.streamInfo = info
+                self.updateTitle()
                 self.updateNowPlaying()
                 self.loadArtwork()
             }
