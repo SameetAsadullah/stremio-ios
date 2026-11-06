@@ -55,7 +55,7 @@ extension PlayerViewController {
         var info: [String: Any] = [
             MPMediaItemPropertyTitle: episode ?? streamInfo?.name ?? "Stremio",
             MPNowPlayingInfoPropertyMediaType: MPNowPlayingInfoMediaType.video.rawValue,
-            MPNowPlayingInfoPropertyPlaybackRate: player.isPlaying ? 1.0 : 0.0,
+            MPNowPlayingInfoPropertyPlaybackRate: player.isPlaying ? Double(player.rate) : 0.0,
             MPNowPlayingInfoPropertyDefaultPlaybackRate: 1.0,
             MPNowPlayingInfoPropertyElapsedPlaybackTime: Double(max(0, player.time.intValue)) / 1000,
         ]

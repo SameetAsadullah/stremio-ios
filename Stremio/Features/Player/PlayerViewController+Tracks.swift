@@ -24,6 +24,7 @@ extension PlayerViewController {
                         UIMenu(title: "Audio", options: .displayInline, children: self.audioMenuItems()),
                         UIMenu(title: "Subtitles", options: .displayInline, children: self.subtitleMenuItems()),
                         self.subtitleSizeMenu(),
+                        self.speedMenu(),
                     ])
                 }
             ])
@@ -95,6 +96,21 @@ extension PlayerViewController {
         return UIGraphicsImageRenderer(size: canvas).image { _ in
             letter.draw(at: CGPoint(x: (canvas.width - size.width) / 2, y: (canvas.height - size.height) / 2))
         }.withRenderingMode(.alwaysTemplate)
+    }
+
+    /// Netflix's speeds. Each video starts at normal speed.
+    private func speedMenu() -> UIMenu {
+        let current = player?.rate ?? 1
+        let label = { (rate: Float) in String(format: "%g\u{00D7}", rate) }
+        let rates: [Float] = [0.5, 0.75, 1, 1.25, 1.5]
+        return UIMenu(
+            title: "Speed", subtitle: label(current), image: UIImage(systemName: "gauge.with.dots.needle.50percent"),
+            children: rates.map { rate in
+                UIAction(title: label(rate), state: abs(rate - current) < 0.01 ? .on : .off) { _ in
+                    self.player?.rate = rate
+                    self.updateNowPlaying()
+                }
+            })
     }
 
     /// Turns on the audio and subtitles in Stremio's preferred languages, once per video.

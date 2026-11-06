@@ -415,7 +415,7 @@ final class PlayerViewController: UIViewController {
         updateNextButton(time: time, duration: Int(player.media?.length.intValue ?? 0))
         if let last = lastObserved {
             let played = time - last.time
-            let elapsed = Int(now.timeIntervalSince(last.at) * 1000)
+            let elapsed = Int(now.timeIntervalSince(last.at) * 1000 * Double(player.rate))
             if abs(played - elapsed) > 3000 {
                 reportTime(seek: true)
                 return
