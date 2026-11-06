@@ -54,7 +54,6 @@ final class PlayerViewController: UIViewController {
     var wantsPlaying = true
     var remoteTargets: [(MPRemoteCommand, Any)] = []
     var nowPlayingArtwork: MPMediaItemArtwork?
-
     var zoom: CGFloat = 1  // 1 = fit; >1 zoomed/filled
     var filled = false
     private static let vlcLogger = VLCLogBridge()
@@ -295,6 +294,8 @@ final class PlayerViewController: UIViewController {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] v in self?.applyRenderTarget(v) }
         player.play()
+        // VLC does not keep the screen on by itself.
+        UIApplication.shared.isIdleTimerDisabled = true
         loadStreamInfo()
         setupRemoteCommands()
         startStatsPolling()
@@ -313,6 +314,7 @@ final class PlayerViewController: UIViewController {
         controlsTimer = nil
         guard let p = player else { return }
         player = nil
+        UIApplication.shared.isIdleTimerDisabled = false
         DispatchQueue.global(qos: .userInitiated).async { p.stop() }
     }
 
@@ -443,6 +445,7 @@ final class PlayerViewController: UIViewController {
         // A long pause is not a stall.
         if playing { lastAdvance = Date() }
         if playing { player.play() } else { player.pause() }
+        UIApplication.shared.isIdleTimerDisabled = playing
         updatePlayPauseIcon(playing: playing)
         return true
     }
