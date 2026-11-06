@@ -4,6 +4,37 @@ All notable changes are listed here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [1.1.0] - 2026-11-06
+
+### Added
+
+- Watch progress syncs to the Stremio account, so Continue Watching and resume work with VLC.
+- A Next Episode button during the credits. With binge watching on, the next episode plays at
+  the end.
+- Lock screen and Control Center controls with the title and poster.
+- The show and episode as the player title.
+- One Audio & Subtitles menu with subtitle size and playback speed.
+- Audio and subtitles in the languages from Stremio's settings.
+- Double-tap the left or right side of the player to skip 10 s.
+- A Start Over button when a video resumes.
+- A splash screen while Stremio loads.
+
+### Changed
+
+- The player opens in landscape. Stremio returns to its earlier orientation when the player
+  closes.
+- The player keeps the screen awake during playback.
+- The player's top bar is simpler.
+- The reinstall scripts accept several devices.
+- The streaming server keeps the previous log.
+
+### Fixed
+
+- Large streams no longer use up the app's memory. VLC gets streams in bounded chunks.
+- Seeks stay on target while the stream buffers, and the player shows the buffering status. The
+  time follows the scrub bar during a drag.
+- Stremio no longer shows a playback error after VLC closes.
+
 ## [1.0.0] - 2026-11-06
 
 ### Added
@@ -22,4 +53,5 @@ All notable changes are listed here. The format follows
   both frameworks.
 - Native requests outside the device must use HTTPS.
 
+[1.1.0]: https://github.com/SameetAsadullah/stremio-ios/releases/tag/v1.1.0
 [1.0.0]: https://github.com/SameetAsadullah/stremio-ios/releases/tag/v1.0.0
