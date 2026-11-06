@@ -54,7 +54,7 @@ final class PlayerViewController: UIViewController {
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
-    deinit { NSLog("[STREMIOAPP] player VC deinit"); stopPlayerAsync() }
+    deinit { Log.player.debug("player VC deinit"); stopPlayerAsync() }
 
     private static func symbol(_ name: String, size: CGFloat = 22) -> UIImage? {
         UIImage(systemName: name, withConfiguration: UIImage.SymbolConfiguration(pointSize: size))
@@ -255,7 +255,7 @@ final class PlayerViewController: UIViewController {
         media.addOption(":network-caching=4000")
         media.addOption(":avcodec-skiploopfilter=3")
         media.addOption(":avcodec-threads=0")
-        NSLog("[STREMIOAPP] VLC opening %@ -> %@", playURL.absoluteString, stream.url.absoluteString)
+        Log.player.info("VLC opening \(playURL.absoluteString) -> \(self.stream.url.absoluteString)")
         player.media = media
         player.delegate = self
         try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .moviePlayback)
@@ -295,10 +295,10 @@ final class PlayerViewController: UIViewController {
             player.media = media
             pendingPosition = pos > 0.001 ? pos : nil
             player.play()
-            NSLog("[STREMIOAPP][tv] restarted on %@ at %.3f", tv == nil ? "phone" : "external display", pos)
+            Log.tv.info("restarted on \(tv == nil ? "phone" : "external display", privacy: .public) at \(pos)")
         } else {
             player.drawable = target
-            NSLog("[STREMIOAPP][tv] rendering on %@", tv == nil ? "phone" : "external display")
+            Log.tv.info("rendering on \(tv == nil ? "phone" : "external display", privacy: .public)")
         }
     }
 

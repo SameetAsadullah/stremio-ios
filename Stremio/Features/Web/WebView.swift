@@ -91,7 +91,7 @@ struct WebView: UIViewRepresentable {
                   url.scheme == "https" || url.scheme == "http" else { return nil }
             var top = webView.window?.rootViewController
             while let next = top?.presentedViewController { top = next }
-            NSLog("[STREMIOAPP] new window %@", url.absoluteString)
+            Log.web.debug("new window \(url.absoluteString)")
             top?.present(SFSafariViewController(url: url), animated: true)
             return nil
         }
@@ -116,12 +116,12 @@ struct WebView: UIViewRepresentable {
                     guard let u = d["url"] as? String, let url = URL(string: u) else { return nil }
                     return PlaybackController.ExternalSubtitle(lang: d["lang"] as? String ?? "", url: url)
                 }
-                NSLog("[STREMIOAPP] subtitle addon offered %d tracks", items.count)
+                Log.web.debug("subtitle addon offered \(items.count) tracks")
                 model.playback.addExternalSubtitles(items)
                 return
             }
             guard let urlString = obj["url"] as? String, let url = URL(string: urlString) else { return }
-            NSLog("[STREMIOAPP] intercepted=%@", urlString)
+            Log.web.debug("intercepted \(urlString)")
             let title = (obj["title"] as? String).flatMap { $0.isEmpty ? nil : $0 } ?? "Stream"
             model.play(url: url, title: title)
         }

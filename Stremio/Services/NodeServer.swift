@@ -52,11 +52,11 @@ final class NodeServer: ObservableObject {
                     if ok {
                         self.isReady = true
                         self.status = "Running on 127.0.0.1:\(Self.port)"
-                        NSLog("[STREMIOAPP][node] server ready after %ds", attempts)
+                        Log.server.info("server ready after \(attempts)s")
                         timer.invalidate()
                     } else if attempts > 60 {
                         self.status = "Didn\u{2019}t start \u{2014} see log"
-                        NSLog("[STREMIOAPP][node] not ready after 60s; log tail:\n%@", Self.logTail(30))
+                        Log.server.error("not ready after 60s; log tail:\n\(Self.logTail(30), privacy: .public)")
                         timer.invalidate()
                     }
                 }
@@ -100,12 +100,12 @@ final class NodeServer: ObservableObject {
         setenv("STREMIO_LOG_PATH", logPath, 1)
         try? "===== BOOT =====\n".write(toFile: logPath, atomically: true, encoding: .utf8)
 
-        NSLog("[STREMIOAPP][node] starting %@", serverJS)
+        Log.server.info("starting \(serverJS, privacy: .public)")
         let args = ["node", "-r", preloadPath, serverJS]
         var cargs: [UnsafeMutablePointer<CChar>?] = args.map { strdup($0) }
         let code = cargs.withUnsafeMutableBufferPointer { node_start(Int32(args.count), $0.baseAddress) }
         cargs.forEach { free($0) }
-        NSLog("[STREMIOAPP][node] exited with code %d", code)
+        Log.server.error("exited with code \(code)")
     }
 }
 
@@ -149,7 +149,9 @@ enum ServerScript {
                     && isValid(downloadedPath)
                 if !ok { try? FileManager.default.removeItem(atPath: downloadedPath) }
             }
-            NSLog("[STREMIOAPP][node] server.js download %@ %@", ok ? "ok" : "FAILED", err?.localizedDescription ?? "")
+            if ok { Log.server.info("server.js download ok") } else {
+                Log.server.error("server.js download FAILED \(err?.localizedDescription ?? "", privacy: .public)")
+            }
             DispatchQueue.main.async { completion(ok) }
         }
         task.resume()

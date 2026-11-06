@@ -10,6 +10,11 @@ final class VLCLogBridge: NSObject, VLCLogging {
         let keep = (logLevel == .error || logLevel == .warning || m.contains("http")
             || m.contains("using demux") || m.contains("decoder") || m.contains("codec")
             || m.contains("videotoolbox")) && !m.contains("too late") && !m.contains("displayed late")
-        if keep && message.count < 400 { NSLog("[STREMIOAPP][vlc] %@", message) }
+        guard keep && message.count < 400 else { return }
+        if logLevel == .error {
+            Log.player.error("vlc: \(message, privacy: .public)")
+        } else {
+            Log.player.debug("vlc: \(message, privacy: .public)")
+        }
     }
 }

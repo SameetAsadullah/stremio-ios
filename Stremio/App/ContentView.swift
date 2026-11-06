@@ -15,7 +15,7 @@ struct StremioHostView: View {
     @StateObject private var model: WebViewModel
 
     init() {
-        NSLog("[STREMIOAPP] StremioHostView init (new PlaybackController)")
+        Log.player.debug("StremioHostView init (new PlaybackController)")
         let playback = PlaybackController()
         _playback = StateObject(wrappedValue: playback)
         _model = StateObject(wrappedValue: WebViewModel(

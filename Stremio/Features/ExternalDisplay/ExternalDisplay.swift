@@ -25,13 +25,12 @@ final class ExternalDisplaySceneDelegate: NSObject, UIWindowSceneDelegate {
         w.rootViewController = vc
         w.isHidden = false
         window = w
-        NSLog("[STREMIOAPP][tv] external display connected screen=%@ window=%@",
-              NSCoder.string(for: ws.screen.bounds.size), NSCoder.string(for: w.bounds.size))
+        Log.tv.info("external display connected screen=\(NSCoder.string(for: ws.screen.bounds.size), privacy: .public) window=\(NSCoder.string(for: w.bounds.size), privacy: .public)")
         ExternalDisplay.shared.attach(vc.videoSurface)
     }
 
     func sceneDidDisconnect(_ scene: UIScene) {
-        NSLog("[STREMIOAPP][tv] external display disconnected")
+        Log.tv.info("external display disconnected")
         ExternalDisplay.shared.detach()
         window = nil
     }
@@ -61,7 +60,8 @@ final class ExternalDisplayViewController: UIViewController {
 
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
-        NSLog("[STREMIOAPP][tv] external view laid out %@ surface=%@",
-              NSCoder.string(for: view.bounds.size), NSCoder.string(for: videoSurface.bounds.size))
+        let viewSize = NSCoder.string(for: view.bounds.size)
+        let surfaceSize = NSCoder.string(for: videoSurface.bounds.size)
+        Log.tv.debug("external view laid out \(viewSize, privacy: .public) surface=\(surfaceSize, privacy: .public)")
     }
 }

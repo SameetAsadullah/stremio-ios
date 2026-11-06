@@ -50,8 +50,7 @@ final class StreamProxy {
         let saved = UserDefaults.standard.integer(forKey: Self.portDefaultsKey)
         let preferred = (saved > 0 && saved <= 65535) ? UInt16(saved) : Self.preferredPort
         if listen(on: preferred) { return }
-        NSLog("[STREMIOAPP][proxy] port %d unavailable — using an ephemeral port; the built-in web app starts a fresh session this launch",
-              Int(preferred))
+        Log.proxy.error("port \(Int(preferred)) unavailable — using an ephemeral port; the built-in web app starts a fresh session this launch")
         _ = listen(on: nil)
     }
 
@@ -61,13 +60,13 @@ final class StreamProxy {
         let wanted = desired.flatMap { NWEndpoint.Port(rawValue: $0) } ?? .any
         params.requiredLocalEndpoint = NWEndpoint.hostPort(host: "127.0.0.1", port: wanted)
         guard let l = try? NWListener(using: params) else {
-            NSLog("[STREMIOAPP][proxy] failed to create listener"); return false
+            Log.proxy.error("failed to create listener"); return false
         }
         let ready = DispatchSemaphore(value: 0)
         l.stateUpdateHandler = { state in
             switch state {
             case .ready: ready.signal()
-            case .failed(let err): NSLog("[STREMIOAPP][proxy] listener failed: %@", err.localizedDescription); ready.signal()
+            case .failed(let err): Log.proxy.error("listener failed: \(err.localizedDescription, privacy: .public)"); ready.signal()
             case .cancelled: ready.signal()
             default: break
             }
@@ -83,7 +82,7 @@ final class StreamProxy {
         listener = l
         port = bound
         UserDefaults.standard.set(Int(bound), forKey: Self.portDefaultsKey)
-        NSLog("[STREMIOAPP][proxy] listening on 127.0.0.1:%d", Int(bound))
+        Log.proxy.info("listening on 127.0.0.1:\(Int(bound))")
         return true
     }
 
@@ -133,7 +132,7 @@ final class StreamProxy {
             r.httpMethod = (method == "HEAD") ? "HEAD" : "GET"
             if let range = headers["range"] { r.setValue(range, forHTTPHeaderField: "Range") }
             r.setValue("StremioApp/1.0", forHTTPHeaderField: "User-Agent")
-            NSLog("[STREMIOAPP][proxy] %@ range=%@", method, headers["range"] ?? "-")
+            Log.proxy.debug("\(method, privacy: .public) range=\(headers["range"] ?? "-", privacy: .public)")
             req = r
             relay = Relay(conn: conn, request: r, followRedirects: false, maxAttempts: 45)
         } else {
@@ -238,7 +237,7 @@ private final class Relay: NSObject, URLSessionDataDelegate {
     }
 
     private func scheduleRetry(reason: String) {
-        NSLog("[STREMIOAPP][proxy] origin not ready (%@) — retry %d/%d in %.0fs", reason, attempts, maxAttempts, retryDelay)
+        Log.proxy.info("origin not ready (\(reason, privacy: .public)) — retry \(self.attempts)/\(self.maxAttempts) in \(self.retryDelay)s")
         retrying = true
         DispatchQueue.global().asyncAfter(deadline: .now() + retryDelay) { [weak self] in
             self?.retrying = false
@@ -247,7 +246,7 @@ private final class Relay: NSObject, URLSessionDataDelegate {
     }
 
     private func fail(_ status: Int, _ reason: String) {
-        NSLog("[STREMIOAPP][proxy] giving up: %@", reason)
+        Log.proxy.error("giving up: \(reason, privacy: .public)")
         let head = "HTTP/1.1 \(status) \(reason)\r\nConnection: close\r\nContent-Length: 0\r\n\r\n"
         conn.send(content: Data(head.utf8), completion: .contentProcessed { [conn] _ in conn.cancel() })
     }
@@ -268,12 +267,11 @@ private final class Relay: NSObject, URLSessionDataDelegate {
         lock.unlock()
 
         guard !gone, attempt <= maxResumeAttempts else {
-            NSLog("[STREMIOAPP][proxy] resume exhausted after %d tries (%@)", attempt, reason)
+            Log.proxy.error("resume exhausted after \(attempt) tries (\(reason, privacy: .public))")
             finish()
             return
         }
-        NSLog("[STREMIOAPP][proxy] mid-stream break at %lld (%@) — resuming %d/%d in %.0fs",
-              offset, reason, attempt, maxResumeAttempts, resumeDelay)
+        Log.proxy.info("mid-stream break at \(offset) (\(reason, privacy: .public)) — resuming \(attempt)/\(self.maxResumeAttempts) in \(self.resumeDelay)s")
         retrying = true
         DispatchQueue.global().asyncAfter(deadline: .now() + resumeDelay) { [weak self] in
             guard let self else { return }
@@ -297,7 +295,7 @@ private final class Relay: NSObject, URLSessionDataDelegate {
                     willPerformHTTPRedirection response: HTTPURLResponse, newRequest request: URLRequest,
                     completionHandler: @escaping (URLRequest?) -> Void) {
         if followRedirects { completionHandler(request); return }
-        NSLog("[STREMIOAPP][proxy] origin redirected %d -> %@", response.statusCode, request.url?.absoluteString ?? "")
+        Log.proxy.error("origin redirected \(response.statusCode) -> \(request.url?.absoluteString ?? "")")
         completionHandler(nil)   // a login bounce is a failure we want to see, not follow
     }
 
@@ -315,15 +313,14 @@ private final class Relay: NSObject, URLSessionDataDelegate {
             guard http.statusCode == 206 else {
                 completionHandler(.cancel)
                 if http.statusCode == 416 || delivered == expectedBody {
-                    NSLog("[STREMIOAPP][proxy] origin reports range past EOF — body already complete")
+                    Log.proxy.info("origin reports range past EOF — body already complete")
                     finish()
                 } else {
                     scheduleResume(reason: "resume got HTTP \(http.statusCode), wanted 206")
                 }
                 return
             }
-            NSLog("[STREMIOAPP][proxy] resumed at %lld (%@)", rangeStart + delivered,
-                  http.value(forHTTPHeaderField: "Content-Range") ?? "-")
+            Log.proxy.info("resumed at \(self.rangeStart + self.delivered) (\(http.value(forHTTPHeaderField: "Content-Range") ?? "-", privacy: .public))")
             completionHandler(.allow)
             return
         }
@@ -350,10 +347,7 @@ private final class Relay: NSObject, URLSessionDataDelegate {
         }
         head += "Connection: close\r\n\r\n"
         if !followRedirects {
-            NSLog("[STREMIOAPP][proxy] origin %d type=%@ range=%@ len=%@ (attempt %d)",
-                  http.statusCode, http.value(forHTTPHeaderField: "Content-Type") ?? "-",
-                  http.value(forHTTPHeaderField: "Content-Range") ?? "-",
-                  http.value(forHTTPHeaderField: "Content-Length") ?? "-", attempts)
+            Log.proxy.debug("origin \(http.statusCode) type=\(http.value(forHTTPHeaderField: "Content-Type") ?? "-", privacy: .public) range=\(http.value(forHTTPHeaderField: "Content-Range") ?? "-", privacy: .public) len=\(http.value(forHTTPHeaderField: "Content-Length") ?? "-", privacy: .public) (attempt \(self.attempts))")
         }
         headWritten = true
         // Body bytes this response promised, so a silent truncation can be told

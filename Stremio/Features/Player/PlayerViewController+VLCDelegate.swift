@@ -4,7 +4,7 @@ import UIKit
 extension PlayerViewController: VLCMediaPlayerDelegate {
     func mediaPlayerStateChanged(_ aNotification: Notification) {
         guard let player else { return }
-        NSLog("[STREMIOAPP] VLC state=%ld isPlaying=%d", player.state.rawValue, player.isPlaying)
+        Log.player.debug("VLC state=\(player.state.rawValue) isPlaying=\(player.isPlaying)")
         switch player.state {
         case .opening: if !hasRenderedFrame { spinner.startAnimating() }
         case .error:
@@ -24,12 +24,12 @@ extension PlayerViewController: VLCMediaPlayerDelegate {
         if let p = pendingPosition, player.isPlaying {
             pendingPosition = nil
             player.position = p
-            NSLog("[STREMIOAPP][tv] resumed at %.3f", p)
+            Log.tv.debug("resumed at \(p)")
         }
         if !hasRenderedFrame {
             hasRenderedFrame = true
             spinner.stopAnimating()
-            NSLog("[STREMIOAPP] first frame at %@", player.time.stringValue)
+            Log.player.info("first frame at \(player.time.stringValue, privacy: .public)")
             stopStatsPolling()
             scheduleControlsHide()
             #if VLC_SELFTEST
@@ -39,7 +39,7 @@ extension PlayerViewController: VLCMediaPlayerDelegate {
                 if let t = subs.first(where: { $0.0 != -1 }) {
                     player.currentVideoSubTitleIndex = t.0
                     player.position = 0.08
-                    NSLog("[STREMIOAPP] selftest picked subtitle %d '%@' of %d", t.0, t.1, subs.count)
+                    Log.player.debug("selftest picked subtitle \(t.0) '\(t.1)' of \(subs.count)")
                 }
             }
             #endif

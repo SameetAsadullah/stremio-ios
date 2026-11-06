@@ -29,7 +29,7 @@ final class PlaybackController: ObservableObject {
     }
 
     func stop() {
-        NSLog("[STREMIOAPP] PlaybackController.stop() — dismissing player")
+        Log.player.debug("PlaybackController.stop() — dismissing player")
         stream = nil; externalSubtitles = []
     }
 }
