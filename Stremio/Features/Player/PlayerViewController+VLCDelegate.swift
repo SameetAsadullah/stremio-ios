@@ -20,8 +20,12 @@ extension PlayerViewController: VLCMediaPlayerDelegate {
             reportTime()
             lastObserved = nil
             playback.report(.paused(true))
+            updatePlayPauseIcon(playing: false)
+            updateNowPlaying()
         case .playing:
             playback.report(.paused(false))
+            updatePlayPauseIcon(playing: true)
+            updateNowPlaying()
         case .ended:
             spinner.stopAnimating()
             handleEnded()

@@ -33,6 +33,7 @@ torrents play on the phone without a computer, a home server or a debrid service
 - Player controls: tap to show or hide, double-tap for fit or fill, pinch to zoom, skip 10 s,
   scrub.
 - Live buffering status for cold torrents, for example "Buffering from 23 sources · 2.1 MB/s".
+- Lock screen and Control Center controls with the title and poster.
 - AirPlay mirroring and HDMI output: the phone decodes the video and sends it to the TV as an
   external display.
 - Facebook and Apple login, add-on configuration pages and Trakt sign-in open in a Safari sheet.

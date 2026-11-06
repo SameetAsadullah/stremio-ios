@@ -1,5 +1,6 @@
 import AVFoundation
 import Combine
+import MediaPlayer
 import MobileVLCKit
 import UIKit
 
@@ -47,6 +48,8 @@ final class PlayerViewController: UIViewController {
     let nextButton = UIButton(type: .system)
     var streamInfo: StreamInfo?
     var refetchedStreamInfo = false
+    var remoteTargets: [(MPRemoteCommand, Any)] = []
+    var nowPlayingArtwork: MPMediaItemArtwork?
 
     var zoom: CGFloat = 1  // 1 = fit; >1 zoomed/filled
     var filled = false
@@ -283,6 +286,7 @@ final class PlayerViewController: UIViewController {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] v in self?.applyRenderTarget(v) }
         player.play()
+        setupRemoteCommands()
         startStatsPolling()
         scheduleControlsHide()
     }
@@ -290,6 +294,7 @@ final class PlayerViewController: UIViewController {
     /// Never call VLCMediaPlayer.stop() on the main thread — on a stuck network
     /// input it blocks, which is what froze "close" mid-buffer. Detach it.
     func stopPlayerAsync() {
+        teardownRemoteCommands()
         tvCancellable = nil
         statsTimer?.invalidate()
         statsTimer = nil
@@ -348,6 +353,7 @@ final class PlayerViewController: UIViewController {
         let duration = Int(player.media?.length.intValue ?? 0)
         guard time > 0 else { return }
         lastReportedTime = time
+        updateNowPlaying()
         if seek {
             playback.report(.seek(time, duration: duration))
         } else {
@@ -396,15 +402,21 @@ final class PlayerViewController: UIViewController {
     }
 
     @objc private func didTapPlayPause() {
-        guard let player else { return }
-        if player.isPlaying {
-            player.pause()
-            playPauseButton.setImage(Self.symbol("play.fill", size: 48), for: .normal)
-        } else {
-            player.play()
-            playPauseButton.setImage(Self.symbol("pause.fill", size: 48), for: .normal)
-        }
+        setPlaying(!(player?.isPlaying ?? true))
         scheduleControlsHide()
+    }
+
+    /// Returns false when there is no player.
+    @discardableResult
+    func setPlaying(_ playing: Bool) -> Bool {
+        guard let player else { return false }
+        if playing { player.play() } else { player.pause() }
+        updatePlayPauseIcon(playing: playing)
+        return true
+    }
+
+    func updatePlayPauseIcon(playing: Bool) {
+        playPauseButton.setImage(Self.symbol(playing ? "pause.fill" : "play.fill", size: 48), for: .normal)
     }
 
     @objc private func didTapSkipBack() {
