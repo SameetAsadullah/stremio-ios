@@ -49,6 +49,7 @@ extension PlayerViewController: VLCMediaPlayerDelegate {
             loadStreamInfo()
             startStallWatch()
             scheduleControlsHide()
+            showResumeNotice()
             #if VLC_SELFTEST
                 DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in
                     guard let self, let player = self.player else { return }

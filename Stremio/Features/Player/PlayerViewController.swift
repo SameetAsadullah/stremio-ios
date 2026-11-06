@@ -55,6 +55,7 @@ final class PlayerViewController: UIViewController {
     var remoteTargets: [(MPRemoteCommand, Any)] = []
     var nowPlayingArtwork: MPMediaItemArtwork?
     var appliedPreferredTracks = false
+    let resumeButton = UIButton(type: .system)
     let skipBadge = UIButton(type: .custom)
     var skipBadgeTimer: Timer?
     var skipBadgeTotal = 0
@@ -106,6 +107,7 @@ final class PlayerViewController: UIViewController {
         setupSpinner()
         setupControls()
         setupNextButton()
+        setupResumeButton()
         startPlayback()
         NotificationCenter.default.addObserver(
             self, selector: #selector(saveProgress), name: UIApplication.willResignActiveNotification, object: nil)
