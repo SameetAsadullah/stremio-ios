@@ -55,6 +55,11 @@ final class PlayerViewController: UIViewController {
     var remoteTargets: [(MPRemoteCommand, Any)] = []
     var nowPlayingArtwork: MPMediaItemArtwork?
     var appliedPreferredTracks = false
+    let skipBadge = UIButton(type: .custom)
+    var skipBadgeTimer: Timer?
+    var skipBadgeTotal = 0
+    var skipBadgeForward = true
+
     var zoom: CGFloat = 1  // 1 = fit; >1 zoomed/filled
     var filled = false
     private static let vlcLogger = VLCLogBridge()
@@ -133,7 +138,7 @@ final class PlayerViewController: UIViewController {
 
     private func setupGestures() {
         let tap = UITapGestureRecognizer(target: self, action: #selector(toggleControls))
-        let doubleTap = UITapGestureRecognizer(target: self, action: #selector(didDoubleTap))
+        let doubleTap = UITapGestureRecognizer(target: self, action: #selector(didDoubleTap(_:)))
         doubleTap.numberOfTapsRequired = 2
         tap.require(toFail: doubleTap)
         let pinch = UIPinchGestureRecognizer(target: self, action: #selector(didPinch))
@@ -168,6 +173,10 @@ final class PlayerViewController: UIViewController {
         toastLabel.alpha = 0
         toastLabel.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(toastLabel)
+
+        skipBadge.isUserInteractionEnabled = false
+        skipBadge.alpha = 0
+        view.addSubview(skipBadge)
 
         NSLayoutConstraint.activate([
             spinner.centerXAnchor.constraint(equalTo: view.centerXAnchor),

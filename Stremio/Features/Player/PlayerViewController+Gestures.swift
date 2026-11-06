@@ -1,10 +1,48 @@
 import UIKit
 
 extension PlayerViewController: UIGestureRecognizerDelegate {
-    @objc func didDoubleTap() {
-        filled.toggle()
-        applyZoom(fillIfPossible: filled, animated: true)
-        flashToast(filled ? "Fill" : "Fit")
+    /// The left and right thirds skip 10 s, as in YouTube and Netflix. The middle switches
+    /// between fit and fill.
+    @objc func didDoubleTap(_ g: UITapGestureRecognizer) {
+        let x = g.location(in: view).x
+        let third = view.bounds.width / 3
+        if x < third {
+            sideSkip(forward: false)
+        } else if x > third * 2 {
+            sideSkip(forward: true)
+        } else {
+            filled.toggle()
+            applyZoom(fillIfPossible: filled, animated: true)
+            flashToast(filled ? "Fill" : "Fit")
+        }
+    }
+
+    /// More double taps on the same side add up, and the badge shows the total.
+    private func sideSkip(forward: Bool) {
+        skip(by: forward ? 10_000 : -10_000)
+        let adding = skipBadgeTimer?.isValid == true && skipBadgeForward == forward
+        skipBadgeTotal = adding ? skipBadgeTotal + 10 : 10
+        skipBadgeForward = forward
+
+        var config = UIButton.Configuration.plain()
+        config.baseForegroundColor = .white
+        config.image = UIImage(systemName: forward ? "forward.fill" : "backward.fill")
+        config.preferredSymbolConfigurationForImage = UIImage.SymbolConfiguration(pointSize: 22)
+        config.imagePlacement = .top
+        config.imagePadding = 6
+        var title = AttributedString("\(skipBadgeTotal) seconds")
+        title.font = .systemFont(ofSize: 13, weight: .semibold)
+        config.attributedTitle = title
+        skipBadge.configuration = config
+        skipBadge.sizeToFit()
+        let b = view.bounds
+        skipBadge.center = CGPoint(x: forward ? b.width * 5 / 6 : b.width / 6, y: b.midY)
+
+        skipBadgeTimer?.invalidate()
+        UIView.animate(withDuration: 0.15) { self.skipBadge.alpha = 1 }
+        skipBadgeTimer = Timer.scheduledTimer(withTimeInterval: 0.8, repeats: false) { [weak self] _ in
+            UIView.animate(withDuration: 0.3) { self?.skipBadge.alpha = 0 }
+        }
     }
 
     @objc func didPinch(_ g: UIPinchGestureRecognizer) {
