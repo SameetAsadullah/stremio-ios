@@ -38,10 +38,11 @@ targets:
                 UISceneDelegateClassName: $(PRODUCT_MODULE_NAME).ExternalDisplaySceneDelegate
         UIStatusBarStyle: UIStatusBarStyleLightContent
         UIViewControllerBasedStatusBarAppearance: false
-        # Self-hosted instance is reachable over HTTPS via the Cloudflare tunnel,
-        # but a self-hosted SSO can bounce through plain-HTTP hops on the LAN, so allow it.
+        # Plain HTTP only for local hosts (the in-app server and proxy) and for web content,
+        # because some add-ons serve images over HTTP.
         NSAppTransportSecurity:
-          NSAllowsArbitraryLoads: true
+          NSAllowsLocalNetworking: true
+          NSAllowsArbitraryLoadsInWebContent: true
     dependencies:
       - framework: Frameworks/MobileVLCKit.xcframework
         embed: true
