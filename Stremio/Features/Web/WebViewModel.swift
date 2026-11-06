@@ -24,13 +24,17 @@ final class WebViewModel: ObservableObject {
         webView?.load(URLRequest(url: url))
     }
 
-    /// Hands the stream to VLC. Shared by the page interception and the self-test.
-    func play(url rawURL: URL, title: String) {
-        // Stremio's URL builder leaves a dangling '?'; libvlc's HTTP access can
-        // mis-handle an empty query, so strip it.
+    /// Stremio's URL builder leaves a dangling '?'; libvlc's HTTP access can
+    /// mis-handle an empty query, so strip it.
+    static func cleanedStreamURL(_ rawURL: URL) -> URL {
         var s = rawURL.absoluteString
         if s.hasSuffix("?") { s.removeLast() }
-        let url = URL(string: s) ?? rawURL
+        return URL(string: s) ?? rawURL
+    }
+
+    /// Hands the stream to VLC. Shared by the page interception and the self-test.
+    func play(url rawURL: URL, title: String) {
+        let url = Self.cleanedStreamURL(rawURL)
         if playback.stream?.url == url { return }
         playback.play(url: url, title: title)
     }

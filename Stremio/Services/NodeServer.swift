@@ -132,9 +132,13 @@ enum ServerScript {
         return nil
     }
 
-    private static func isValid(_ path: String) -> Bool {
+    static func sha256Hex(of data: Data) -> String {
+        SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
+    }
+
+    static func isValid(_ path: String, expectedSHA256: String = sha256) -> Bool {
         guard let data = FileManager.default.contents(atPath: path) else { return false }
-        return SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined() == sha256
+        return sha256Hex(of: data) == expectedSHA256
     }
 
     /// Downloads if missing. Completion on main.

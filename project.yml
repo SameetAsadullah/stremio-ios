@@ -79,3 +79,29 @@ targets:
         DEVELOPMENT_TEAM: 99NBFU9494
         OTHER_LDFLAGS: "-ObjC -lc++"
         SWIFT_OBJC_BRIDGING_HEADER: Stremio/App/Stremio-Bridging.h
+  StremioTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - Tests/StremioTests
+    dependencies:
+      - target: Stremio
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: com.sameetasadullah.stremio.tests
+        SWIFT_VERSION: "5.0"
+        DEVELOPMENT_TEAM: 99NBFU9494
+        TEST_HOST: $(BUILT_PRODUCTS_DIR)/Stremio.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Stremio
+        BUNDLE_LOADER: $(TEST_HOST)
+schemes:
+  Stremio:
+    build:
+      targets:
+        Stremio: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - StremioTests

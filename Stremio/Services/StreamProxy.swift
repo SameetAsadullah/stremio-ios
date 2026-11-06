@@ -14,6 +14,15 @@ final class StreamProxy {
     static let shared = StreamProxy()
     static let mirrorOrigin = URL(string: "https://web.stremio.com")!
 
+    /// Web mirror: same path/query on web.stremio.com.
+    /// An absolute or scheme-relative target would replace the mirror host.
+    static func mirrorURL(forTarget target: String) -> URL? {
+        guard target.hasPrefix("/"), !target.hasPrefix("//"),
+              let url = URL(string: target, relativeTo: mirrorOrigin)?.absoluteURL,
+              url.host == mirrorOrigin.host else { return nil }
+        return url
+    }
+
     private struct Route { let origin: URL }
     private var routes: [String: Route] = [:]
     private var listener: NWListener?
@@ -136,11 +145,7 @@ final class StreamProxy {
             req = r
             relay = Relay(conn: conn, request: r, followRedirects: false, maxAttempts: 45)
         } else {
-            // Web mirror: same path/query on web.stremio.com.
-            // An absolute or scheme-relative target would replace the mirror host.
-            guard target.hasPrefix("/"), !target.hasPrefix("//"),
-                  let url = URL(string: target, relativeTo: Self.mirrorOrigin)?.absoluteURL,
-                  url.host == Self.mirrorOrigin.host else { conn.cancel(); return }
+            guard let url = Self.mirrorURL(forTarget: target) else { conn.cancel(); return }
             var r = URLRequest(url: url)
             r.httpMethod = (method == "HEAD") ? "HEAD" : "GET"
             for key in ["accept", "accept-language", "range", "if-none-match", "if-modified-since", "user-agent"] {
