@@ -18,8 +18,7 @@ final class ExternalDisplay: ObservableObject {
 final class AppDelegate: NSObject, UIApplicationDelegate {
     func application(_ application: UIApplication,
                      didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
-        CastManager.configure()
-        return true
+        true
     }
 
     func application(_ application: UIApplication,
