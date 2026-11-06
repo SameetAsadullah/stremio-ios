@@ -1,13 +1,6 @@
 import UIKit
 
 extension PlayerViewController: UIGestureRecognizerDelegate {
-    @objc func didTapAspect() {
-        filled.toggle()
-        applyZoom(fillIfPossible: filled, animated: true)
-        flashToast(filled ? "Fill" : "Fit")
-        scheduleControlsHide()
-    }
-
     @objc func didDoubleTap() {
         filled.toggle()
         applyZoom(fillIfPossible: filled, animated: true)

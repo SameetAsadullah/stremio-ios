@@ -20,9 +20,7 @@ final class PlayerViewController: UIViewController {
 
     private let closeButton = UIButton(type: .system)
     private let titleLabel = UILabel()
-    let audioButton = MenuButton(type: .system)
-    let subsButton = MenuButton(type: .system)
-    private let aspectButton = UIButton(type: .system)
+    let tracksButton = MenuButton(type: .system)
     private let castButton = UIButton(type: .system)
     private let tvPlaceholder = UIStackView()
     private var tvCancellable: AnyCancellable?
@@ -68,8 +66,8 @@ final class PlayerViewController: UIViewController {
         stopPlayerAsync()
     }
 
-    private static func symbol(_ name: String, size: CGFloat = 22) -> UIImage? {
-        UIImage(systemName: name, withConfiguration: UIImage.SymbolConfiguration(pointSize: size))
+    private static func symbol(_ name: String, size: CGFloat, weight: UIImage.SymbolWeight = .regular) -> UIImage? {
+        UIImage(systemName: name, withConfiguration: UIImage.SymbolConfiguration(pointSize: size, weight: weight))
     }
 
     override var prefersStatusBarHidden: Bool { true }
@@ -190,12 +188,15 @@ final class PlayerViewController: UIViewController {
         scrim.isUserInteractionEnabled = false
         controls.addSubview(scrim)
 
-        configureIcon(closeButton, "xmark", action: #selector(didTapClose))
-        configureIcon(audioButton, "waveform")
-        configureIcon(subsButton, "captions.bubble")
-        setupTrackMenus()
-        configureIcon(aspectButton, "rectangle.arrowtriangle.2.inward", action: #selector(didTapAspect))
-        configureIcon(castButton, "airplayvideo", action: #selector(didTapCast))
+        configureIcon(closeButton, "xmark", action: #selector(didTapClose), size: 17, weight: .semibold)
+        configureIcon(tracksButton, "captions.bubble", size: 19)
+        setupTrackMenu()
+        configureIcon(castButton, "airplayvideo", action: #selector(didTapCast), size: 19)
+        for b in [closeButton, tracksButton, castButton] {
+            NSLayoutConstraint.activate([
+                b.widthAnchor.constraint(equalToConstant: 44), b.heightAnchor.constraint(equalToConstant: 44),
+            ])
+        }
         configureIcon(playPauseButton, "pause.fill", action: #selector(didTapPlayPause), size: 48)
         configureIcon(skipBackButton, "gobackward.10", action: #selector(didTapSkipBack), size: 32)
         configureIcon(skipForwardButton, "goforward.10", action: #selector(didTapSkipForward), size: 32)
@@ -205,9 +206,9 @@ final class PlayerViewController: UIViewController {
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
         controls.addSubview(titleLabel)
 
-        let topRight = UIStackView(arrangedSubviews: [audioButton, subsButton, aspectButton, castButton])
+        let topRight = UIStackView(arrangedSubviews: [tracksButton, castButton])
         topRight.axis = .horizontal
-        topRight.spacing = 16
+        topRight.spacing = 4
         topRight.translatesAutoresizingMaskIntoConstraints = false
         controls.addSubview(topRight)
 
@@ -229,13 +230,14 @@ final class PlayerViewController: UIViewController {
 
         let g = view.safeAreaLayoutGuide
         NSLayoutConstraint.activate([
-            closeButton.topAnchor.constraint(equalTo: g.topAnchor, constant: 8),
-            closeButton.leadingAnchor.constraint(equalTo: g.leadingAnchor, constant: 16),
+            // The 44 pt buttons have their own padding, so they sit closer to the edges.
+            closeButton.topAnchor.constraint(equalTo: g.topAnchor, constant: 4),
+            closeButton.leadingAnchor.constraint(equalTo: g.leadingAnchor, constant: 4),
             titleLabel.centerYAnchor.constraint(equalTo: closeButton.centerYAnchor),
-            titleLabel.leadingAnchor.constraint(equalTo: closeButton.trailingAnchor, constant: 12),
+            titleLabel.leadingAnchor.constraint(equalTo: closeButton.trailingAnchor, constant: 4),
             titleLabel.trailingAnchor.constraint(lessThanOrEqualTo: topRight.leadingAnchor, constant: -12),
             topRight.centerYAnchor.constraint(equalTo: closeButton.centerYAnchor),
-            topRight.trailingAnchor.constraint(equalTo: g.trailingAnchor, constant: -16),
+            topRight.trailingAnchor.constraint(equalTo: g.trailingAnchor, constant: -4),
 
             playPauseButton.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             playPauseButton.centerYAnchor.constraint(equalTo: view.centerYAnchor),
@@ -254,8 +256,10 @@ final class PlayerViewController: UIViewController {
         ])
     }
 
-    private func configureIcon(_ b: UIButton, _ name: String, action: Selector? = nil, size: CGFloat = 22) {
-        b.setImage(Self.symbol(name, size: size), for: .normal)
+    private func configureIcon(
+        _ b: UIButton, _ name: String, action: Selector? = nil, size: CGFloat, weight: UIImage.SymbolWeight = .regular
+    ) {
+        b.setImage(Self.symbol(name, size: size, weight: weight), for: .normal)
         b.tintColor = .white
         b.translatesAutoresizingMaskIntoConstraints = false
         if let action { b.addTarget(self, action: action, for: .touchUpInside) }

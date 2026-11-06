@@ -10,21 +10,25 @@ extension PlayerViewController {
         }
     }
 
-    /// Gives the audio and subtitle buttons their menus. The items are built each time a menu
-    /// opens, because VLC finds tracks and the add-ons send subtitles after playback starts.
-    func setupTrackMenus() {
-        for (button, title, items) in [
-            (audioButton, "Audio", audioMenuItems),
-            (subsButton, "Subtitles", subtitleMenuItems),
-        ] as [(MenuButton, String, () -> [UIMenuElement])] {
-            button.showsMenuAsPrimaryAction = true
-            button.preferredMenuElementOrder = .fixed
-            button.menu = UIMenu(
-                title: title,
-                children: [UIDeferredMenuElement.uncached { completion in completion(items()) }])
-            button.onMenuOpen = { [weak self] in self?.controlsTimer?.invalidate() }
-            button.onMenuClose = { [weak self] in self?.scheduleControlsHide() }
-        }
+    /// One "Audio & Subtitles" menu, as in Netflix. The items are built each time the menu opens,
+    /// because VLC finds tracks and the add-ons send subtitles after playback starts.
+    func setupTrackMenu() {
+        tracksButton.showsMenuAsPrimaryAction = true
+        tracksButton.preferredMenuElementOrder = .fixed
+        tracksButton.menu = UIMenu(
+            title: "Audio & Subtitles",
+            children: [
+                UIDeferredMenuElement.uncached { [weak self] completion in
+                    guard let self else { return completion([]) }
+                    completion([
+                        UIMenu(title: "Audio", options: .displayInline, children: self.audioMenuItems()),
+                        UIMenu(title: "Subtitles", options: .displayInline, children: self.subtitleMenuItems()),
+                        self.subtitleSizeMenu(),
+                    ])
+                }
+            ])
+        tracksButton.onMenuOpen = { [weak self] in self?.controlsTimer?.invalidate() }
+        tracksButton.onMenuClose = { [weak self] in self?.scheduleControlsHide() }
     }
 
     private func audioMenuItems() -> [UIMenuElement] {
@@ -65,20 +69,32 @@ extension PlayerViewController {
         if embedded.count <= 1 && playback.externalSubtitles.isEmpty {
             items.append(Self.placeholder("No subtitles for this stream"))
         }
-        return [subtitleSizeMenu(), UIMenu(options: .displayInline, children: items)]
+        return items
     }
 
+    /// A row of four "A"s in growing sizes, with the current size selected.
     private func subtitleSizeMenu() -> UIMenu {
         let current = SubtitleSize.saved()
-        let sizes = SubtitleSize.allCases.map { size in
-            UIAction(title: size.title, state: size == current ? .on : .off) { _ in
+        let sizes = SubtitleSize.allCases.enumerated().map { index, size in
+            UIAction(title: size.title, image: Self.letterImage(step: index), state: size == current ? .on : .off) {
+                _ in
                 size.save()
                 self.applySubtitleSize(size)
             }
         }
-        return UIMenu(
-            title: "Size", subtitle: current.title, image: UIImage(systemName: "textformat.size"),
-            children: sizes)
+        return UIMenu(title: "Subtitle Size", options: [.displayInline, .displayAsPalette], children: sizes)
+    }
+
+    /// The menu scales palette images to one size, so every "A" is drawn on the same canvas and
+    /// only the letter grows.
+    private static func letterImage(step: Int) -> UIImage {
+        let canvas = CGSize(width: 26, height: 26)
+        let font = UIFont.systemFont(ofSize: 11 + CGFloat(step) * 4, weight: .semibold)
+        let letter = NSAttributedString(string: "A", attributes: [.font: font, .foregroundColor: UIColor.black])
+        let size = letter.size()
+        return UIGraphicsImageRenderer(size: canvas).image { _ in
+            letter.draw(at: CGPoint(x: (canvas.width - size.width) / 2, y: (canvas.height - size.height) / 2))
+        }.withRenderingMode(.alwaysTemplate)
     }
 
     func applySubtitleSize(_ size: SubtitleSize) {
