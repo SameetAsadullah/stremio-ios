@@ -91,8 +91,17 @@ final class NodeServer: ObservableObject {
         FileManager.default.changeCurrentDirectoryPath(caches)
 
         // Preload: route console output to a file we can read from Swift/`log show`.
+        // server.js listens on all interfaces, which exposes it to everyone on the Wi-Fi.
+        // Pin its HTTP ports (11470, with fallbacks to 11474) to loopback. Peer ports stay open.
         let preloadPath = (caches as NSString).appendingPathComponent("stremio-preload.js")
         let preload = """
+        const net=require('net'); const listen=net.Server.prototype.listen;
+        const ours=p=>(p=Number(p))>=11470&&p<=11474;
+        net.Server.prototype.listen=function(...a){
+          if(a[0]&&typeof a[0]==='object'&&ours(a[0].port)&&!a[0].host) a[0]=Object.assign({},a[0],{host:'127.0.0.1'});
+          else if(ours(a[0])&&typeof a[1]!=='string') a.splice(1,0,'127.0.0.1');
+          return listen.apply(this,a);
+        };
         const fs=require('fs'); const L=\(jsString(logPath));
         const w=(t,a)=>{try{fs.appendFileSync(L,new Date().toISOString().slice(11,19)+' '+t+' '+Array.prototype.map.call(a,String).join(' ')+'\\n')}catch(e){}};
         console.log=function(){w('[log]',arguments)}; console.error=function(){w('[err]',arguments)}; console.warn=function(){w('[warn]',arguments)};
