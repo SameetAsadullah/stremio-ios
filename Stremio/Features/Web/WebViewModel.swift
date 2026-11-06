@@ -18,19 +18,7 @@ final class WebViewModel: ObservableObject {
     init(url: URL, playback: PlaybackController) {
         self.url = url
         self.playback = playback
-        playback.onProgress = { [weak self] in self?.sendProgress($0) }
-    }
-
-    /// Passes the player's progress to Stremio's core through `intercept.js`.
-    private func sendProgress(_ event: PlaybackController.ProgressEvent) {
-        let call: String
-        switch event {
-        case .time(let time, let duration): call = "time(\(time), \(duration))"
-        case .seek(let time, let duration): call = "seek(\(time), \(duration))"
-        case .paused(let paused): call = "paused(\(paused))"
-        case .ended: call = "ended()"
-        }
-        webView?.evaluateJavaScript("window.__stremioVLC && window.__stremioVLC.\(call)")
+        playback.session = self
     }
 
     func reload() {
@@ -60,5 +48,42 @@ final class WebViewModel: ObservableObject {
         let url = Self.cleanedStreamURL(rawURL)
         if playback.stream?.url == url { return }
         playback.play(url: url, title: title, startTime: startTime)
+    }
+}
+
+/// Talks to Stremio's core through the hooks in `intercept.js`.
+extension WebViewModel: StremioSession {
+    func report(_ event: PlaybackController.ProgressEvent) {
+        let call: String
+        switch event {
+        case .time(let time, let duration): call = "time(\(time), \(duration))"
+        case .seek(let time, let duration): call = "seek(\(time), \(duration))"
+        case .paused(let paused): call = "paused(\(paused))"
+        case .ended: call = "ended()"
+        }
+        webView?.evaluateJavaScript("window.__stremioVLC && window.__stremioVLC.\(call)")
+    }
+
+    func streamInfo(_ completion: @escaping (StreamInfo?) -> Void) {
+        callHook("info") { completion(StreamInfo($0)) }
+    }
+
+    func playNext(_ completion: @escaping (Bool) -> Void) {
+        callHook("playNext") { completion($0 as? Bool ?? false) }
+    }
+
+    private func callHook(_ name: String, _ completion: @escaping (Any?) -> Void) {
+        guard let webView else { return completion(nil) }
+        webView.callAsyncJavaScript(
+            "return window.__stremioVLC ? await window.__stremioVLC.\(name)() : null", arguments: [:], in: nil,
+            in: .page
+        ) { result in
+            switch result {
+            case .success(let value): completion(value)
+            case .failure(let error):
+                Log.web.error("\(name, privacy: .public) failed: \(error.localizedDescription, privacy: .public)")
+                completion(nil)
+            }
+        }
     }
 }

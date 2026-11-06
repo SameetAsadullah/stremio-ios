@@ -31,8 +31,48 @@
       dispatchPlayer({ action: 'Seek', args: { time: time, duration: duration, device: 'VLC' } });
     },
     paused: function (paused) { dispatchPlayer({ action: 'PausedChanged', args: { paused: paused } }); },
-    ended: function () { dispatchPlayer({ action: 'Ended' }); }
+    ended: function () { dispatchPlayer({ action: 'Ended' }); },
+    // What the app shows outside the page: the title and poster for the lock screen, and the next
+    // episode with the profile settings that Stremio's player uses for it.
+    info: function () {
+      return Promise.all([window.core.getState('player'), window.core.getState('ctx')]).then(function (r) {
+        var p = r[0] || {}, settings = (r[1] && r[1].profile && r[1].profile.settings) || {};
+        var meta = p.metaItem && p.metaItem.type === 'Ready' ? p.metaItem.content : null;
+        var req = p.selected && p.selected.streamRequest;
+        var id = req && req.path && req.path.id;
+        var video = meta && meta.videos ? meta.videos.filter(function (v) { return v.id === id; })[0] : null;
+        var next = p.nextVideo;
+        return {
+          name: meta ? meta.name : null,
+          poster: meta ? (meta.poster || null) : null,
+          episode: video ? episodeLabel(video) : null,
+          next: next ? { label: episodeLabel(next), thumbnail: next.thumbnail || null } : null,
+          bingeWatching: settings.bingeWatching !== false,
+          notifyMs: typeof settings.nextVideoNotificationDuration === 'number' ?
+            settings.nextVideoNotificationDuration : 35000
+        };
+      });
+    },
+    // Same steps as the web player's "watch now" and end-of-video handling.
+    playNext: function () {
+      return window.core.getState('player').then(function (p) {
+        var links = p && p.nextVideo && p.nextVideo.deepLinks;
+        if (!links) return false;
+        dispatchPlayer({ action: 'NextVideo' });
+        var link = links.player || links.metaDetailsStreams;
+        if (link) window.location.replace(link);
+        return !!link;
+      });
+    }
   };
+
+  function episodeLabel(video) {
+    var title = video.title || video.name || '';
+    if (typeof video.season === 'number' && typeof video.episode === 'number') {
+      return 'S' + video.season + 'E' + video.episode + (title ? ' \u00b7 ' + title : '');
+    }
+    return title || null;
+  }
 
   // The saved position, read the same way the web player does: only when the library item's
   // last video is the one about to play.

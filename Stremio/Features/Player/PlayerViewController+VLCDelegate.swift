@@ -24,7 +24,7 @@ extension PlayerViewController: VLCMediaPlayerDelegate {
             playback.report(.paused(false))
         case .ended:
             spinner.stopAnimating()
-            playback.report(.ended)
+            handleEnded()
         case .stopped: spinner.stopAnimating()
         default: break
         }
@@ -42,6 +42,7 @@ extension PlayerViewController: VLCMediaPlayerDelegate {
             spinner.stopAnimating()
             Log.player.info("first frame at \(player.time.stringValue, privacy: .public)")
             stopStatsPolling()
+            loadStreamInfo()
             scheduleControlsHide()
             #if VLC_SELFTEST
                 DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in

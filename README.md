@@ -27,6 +27,8 @@ torrents play on the phone without a computer, a home server or a debrid service
   tracks.
 - Watch progress syncs to your Stremio account: Continue Watching and resume work as in the
   official apps.
+- A Next Episode button during the credits. With Stremio's binge watching setting on, the next
+  episode plays when one ends.
 - Audio and subtitle track pickers. Subtitles from Stremio subtitle add-ons load into VLC.
 - Player controls: tap to show or hide, double-tap for fit or fill, pinch to zoom, skip 10 s,
   scrub.

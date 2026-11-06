@@ -61,7 +61,7 @@ struct StremioHostView: View {
         .onAppear {
             ServerScript.ensure(progress: { _ in }) { ok in if ok { NodeServer.shared.startIfNeeded() } }
         }
-        .fullScreenCover(item: $playback.stream) { stream in
+        .fullScreenCover(item: $playback.stream, onDismiss: playback.playerDidClose) { stream in
             VLCPlayerContainer(stream: stream, playback: playback) {
                 playback.stop()
                 model.leavePlayerPage()

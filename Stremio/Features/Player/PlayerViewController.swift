@@ -6,7 +6,7 @@ import UIKit
 final class PlayerViewController: UIViewController {
     let stream: PlaybackController.Stream
     let playback: PlaybackController
-    private let onClose: () -> Void
+    let onClose: () -> Void
     var player: VLCMediaPlayer!
     var selectedExternalSubtitle: URL?
 
@@ -43,7 +43,10 @@ final class PlayerViewController: UIViewController {
     var lastReportedTime = 0
     /// Last VLC time and the wall clock at that moment, to tell a seek from normal playback.
     var lastObserved: (time: Int, at: Date)?
-    private var closed = false
+    var closed = false
+    let nextButton = UIButton(type: .system)
+    var streamInfo: StreamInfo?
+    var refetchedStreamInfo = false
 
     var zoom: CGFloat = 1  // 1 = fit; >1 zoomed/filled
     var filled = false
@@ -78,6 +81,7 @@ final class PlayerViewController: UIViewController {
         setupGestures()
         setupSpinner()
         setupControls()
+        setupNextButton()
         startPlayback()
         NotificationCenter.default.addObserver(
             self, selector: #selector(saveProgress), name: UIApplication.willResignActiveNotification, object: nil)
@@ -365,6 +369,7 @@ final class PlayerViewController: UIViewController {
         let time = Int(player.time.intValue)
         let now = Date()
         defer { lastObserved = (time, now) }
+        updateNextButton(time: time, duration: Int(player.media?.length.intValue ?? 0))
         if let last = lastObserved {
             let played = time - last.time
             let elapsed = Int(now.timeIntervalSince(last.at) * 1000)
@@ -379,6 +384,10 @@ final class PlayerViewController: UIViewController {
     // MARK: - Actions
 
     @objc private func didTapClose() {
+        close()
+    }
+
+    func close() {
         guard !closed else { return }
         closed = true
         reportTime(seek: true)

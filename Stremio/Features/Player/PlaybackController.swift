@@ -29,15 +29,50 @@ final class PlaybackController: ObservableObject {
     @Published var stream: Stream?
     /// Subtitles offered by Stremio's subtitle addons for the current item.
     @Published var externalSubtitles: [ExternalSubtitle] = []
-    /// Receives the player's progress, set by the web view model.
-    var onProgress: ((ProgressEvent) -> Void)?
+    weak var session: StremioSession?
+
+    /// True from showing the player until its close animation ends.
+    private var playerOnScreen = false
+    private var pendingStream: Stream?
 
     func play(url: URL, title: String, startTime: Int = 0) {
-        stream = Stream(url: url, title: title, startTime: startTime)
+        let next = Stream(url: url, title: title, startTime: startTime)
+        // iOS ignores a new full-screen player while the old one is still closing, which happens
+        // when the next episode's stream arrives quickly. Show it once the close has finished.
+        if stream == nil && playerOnScreen {
+            Log.player.info("player still closing, holding the next stream")
+            pendingStream = next
+            return
+        }
+        stream = next
+        playerOnScreen = true
+    }
+
+    func playerDidClose() {
+        playerOnScreen = false
+        guard let next = pendingStream else { return }
+        pendingStream = nil
+        stream = next
+        playerOnScreen = true
     }
 
     func report(_ event: ProgressEvent) {
-        onProgress?(event)
+        session?.report(event)
+    }
+
+    func streamInfo(_ completion: @escaping (StreamInfo?) -> Void) {
+        guard let session else { return completion(nil) }
+        session.streamInfo(completion)
+    }
+
+    /// Closes the player and lets the web app open the next episode. The web app then sends the
+    /// next stream, as for a normal Play.
+    func playNext(orElse close: @escaping () -> Void) {
+        guard let session else { return close() }
+        stop()
+        session.playNext { started in
+            if !started { close() }
+        }
     }
 
     func addExternalSubtitles(_ items: [ExternalSubtitle]) {
