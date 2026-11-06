@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-# Fetches the two prebuilt frameworks (both gitignored, ~1.4 GB unpacked):
+# Downloads the two prebuilt frameworks into Frameworks/ (gitignored, about 1.4 GB unpacked).
+# Skips a framework that is already there. Safe to run again.
+# Frameworks:
 #   - MobileVLCKit.xcframework (VideoLAN) — native player
 #   - NodeMobile.xcframework (nodejs-mobile) — runs Stremio's server.js on-device
 set -euo pipefail

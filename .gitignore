@@ -9,9 +9,8 @@ Stremio/Resources/Info.plist
 # generated per-user Xcode state
 xcuserdata/
 *.xcuserstate
-# MobileVLCKit is 1.3 GB — fetched by scripts/fetch-vlc.sh, never committed
+# MobileVLCKit and nodejs-mobile, downloaded by scripts/bootstrap.sh
 Frameworks/
-# nodejs-mobile framework fetched by scripts/fetch-vlc.sh
 # local test screenshots
 artifacts/
 .DS_Store

@@ -43,7 +43,7 @@ its SHA-256. Downloads pause when the app is in the background (iOS limit).
 
 ```bash
 brew install xcodegen
-scripts/fetch-vlc.sh          # downloads MobileVLCKit.xcframework (~1.3 GB, gitignored)
+scripts/bootstrap.sh          # downloads MobileVLCKit and nodejs-mobile (gitignored)
 xcodegen generate
 open Stremio.xcodeproj        # Signing & Capabilities → pick your Team → Run on your iPhone
 ```
