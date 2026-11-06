@@ -30,8 +30,10 @@ torrents play on the phone without a computer, a home server or a debrid service
 - A Next Episode button during the credits. With Stremio's binge watching setting on, the next
   episode plays when one ends.
 - Audio and subtitle track pickers. Subtitles from Stremio subtitle add-ons load into VLC.
-- Player controls: tap to show or hide, double-tap for fit or fill, pinch to zoom, skip 10 s,
-  scrub.
+  Each video starts with the audio and subtitle languages from Stremio's settings.
+- Player controls: tap to show or hide, double-tap the left or right side to skip 10 s,
+  double-tap the middle for fit or fill, pinch to zoom, scrub, playback speed.
+- The player opens in landscape and keeps the screen awake. A resumed video offers Start Over.
 - Live buffering status for cold torrents, for example "Buffering from 23 sources · 2.1 MB/s".
 - Lock screen and Control Center controls with the title and poster.
 - AirPlay mirroring and HDMI output: the phone decodes the video and sends it to the TV as an
