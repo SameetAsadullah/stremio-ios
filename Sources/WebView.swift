@@ -1,5 +1,6 @@
 import SwiftUI
 import WebKit
+import SafariServices
 
 /// Owns the WKWebView-driven state so SwiftUI can show loading/error chrome
 /// without the web view being torn down on every state change.
@@ -234,6 +235,7 @@ struct WebView: UIViewRepresentable {
 
         let webView = WKWebView(frame: .zero, configuration: config)
         webView.navigationDelegate = context.coordinator
+        webView.uiDelegate = context.coordinator
         webView.allowsBackForwardNavigationGestures = true
         webView.scrollView.contentInsetAdjustmentBehavior = .never
         webView.isOpaque = true
@@ -271,7 +273,7 @@ struct WebView: UIViewRepresentable {
 
     func updateUIView(_ uiView: WKWebView, context: Context) {}
 
-    final class Coordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
+    final class Coordinator: NSObject, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandler {
         private let model: WebViewModel
         init(_ model: WebViewModel) { self.model = model }
 
@@ -302,6 +304,21 @@ struct WebView: UIViewRepresentable {
             model.isLoading = false
             if (error as NSError).code == NSURLErrorCancelled { return }
             model.errorMessage = error.localizedDescription
+        }
+
+        // MARK: new windows
+        // Social logins, add-on configure pages and share links use window.open.
+        // Facebook refuses logins in embedded web views, so show a Safari sheet.
+        // The page polls Stremio's API until the login in the sheet completes.
+        func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration,
+                     for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
+            guard let url = navigationAction.request.url,
+                  url.scheme == "https" || url.scheme == "http" else { return nil }
+            var top = webView.window?.rootViewController
+            while let next = top?.presentedViewController { top = next }
+            NSLog("[STREMIOAPP] new window %@", url.absoluteString)
+            top?.present(SFSafariViewController(url: url), animated: true)
+            return nil
         }
 
         // MARK: stream interception
