@@ -1,5 +1,6 @@
 # Stremio for iOS
 
+[![CI](https://github.com/SameetAsadullah/stremio-ios/actions/workflows/ci.yml/badge.svg)](https://github.com/SameetAsadullah/stremio-ios/actions/workflows/ci.yml)
 ![Platform](https://img.shields.io/badge/platform-iOS%2017%2B-lightgrey)
 ![Swift](https://img.shields.io/badge/Swift-5-orange)
 ![License](https://img.shields.io/badge/license-MIT-blue)
