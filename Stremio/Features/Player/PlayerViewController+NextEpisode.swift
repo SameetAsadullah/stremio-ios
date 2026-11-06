@@ -32,6 +32,8 @@ extension PlayerViewController {
                 self.updateTitle()
                 self.updateNowPlaying()
                 self.loadArtwork()
+                // VLC lists the tracks once the first frame is out.
+                if self.hasRenderedFrame { self.applyPreferredTracks() }
             }
         }
     }

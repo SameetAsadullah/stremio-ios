@@ -97,6 +97,50 @@ extension PlayerViewController {
         }.withRenderingMode(.alwaysTemplate)
     }
 
+    /// Turns on the audio and subtitles in Stremio's preferred languages, once per video.
+    func applyPreferredTracks() {
+        guard let player, let info = streamInfo, !appliedPreferredTracks else { return }
+        appliedPreferredTracks = true
+        let languages = trackLanguages()
+        let tracks = { (indexes: [Any]?, names: [Any]?) in
+            self.trackList(indexes: indexes, names: names).filter { $0.0 != -1 }.map {
+                TrackLanguage.Track(id: $0.0, name: $0.1, language: languages[$0.0])
+            }
+        }
+        let audio = tracks(player.audioTrackIndexes, player.audioTrackNames)
+        if audio.count > 1, let id = TrackLanguage.pick(audio, preferred: info.audioLanguages) {
+            player.currentAudioTrackIndex = id
+            Log.player.info("picked audio track \(id) for \(info.audioLanguages, privacy: .public)")
+        }
+        let subs = tracks(player.videoSubTitlesIndexes, player.videoSubTitlesNames)
+        if let id = TrackLanguage.pick(subs, preferred: info.subtitleLanguages) {
+            selectedExternalSubtitle = nil
+            player.currentVideoSubTitleIndex = id
+            Log.player.info("picked subtitle track \(id) for \(info.subtitleLanguages, privacy: .public)")
+            return
+        }
+        let online = playback.externalSubtitles
+        let onlineTracks = online.enumerated().map { TrackLanguage.Track(id: Int32($0), name: "", language: $1.lang) }
+        if let index = TrackLanguage.pick(onlineTracks, preferred: info.subtitleLanguages) {
+            let sub = online[Int(index)]
+            player.addPlaybackSlave(sub.url, type: .subtitle, enforce: true)
+            selectedExternalSubtitle = sub.url
+            Log.player.info("picked online subtitles \(sub.lang, privacy: .public)")
+        }
+    }
+
+    /// The language code of each track, by track ID.
+    private func trackLanguages() -> [Int32: String] {
+        var result: [Int32: String] = [:]
+        for case let track as [String: Any] in player?.media?.tracksInformation ?? [] {
+            guard let id = (track[VLCMediaTracksInformationId] as? NSNumber)?.int32Value,
+                let language = track[VLCMediaTracksInformationLanguage] as? String
+            else { continue }
+            result[id] = language
+        }
+        return result
+    }
+
     func applySubtitleSize(_ size: SubtitleSize) {
         // VLCKit 3 implements this setter but leaves it out of its public headers.
         let selector = NSSelectorFromString("setTextRendererFontSize:")

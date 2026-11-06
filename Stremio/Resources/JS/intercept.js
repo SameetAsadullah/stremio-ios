@@ -49,7 +49,9 @@
           next: next ? { label: episodeLabel(next), thumbnail: next.thumbnail || null } : null,
           bingeWatching: settings.bingeWatching !== false,
           notifyMs: typeof settings.nextVideoNotificationDuration === 'number' ?
-            settings.nextVideoNotificationDuration : 35000
+            settings.nextVideoNotificationDuration : 35000,
+          audioLanguages: [settings.audioLanguage, settings.secondaryAudioLanguage].filter(Boolean),
+          subtitleLanguages: [settings.subtitlesLanguage, settings.secondarySubtitlesLanguage].filter(Boolean)
         };
       });
     },

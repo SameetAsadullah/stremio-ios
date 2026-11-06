@@ -16,6 +16,10 @@ struct StreamInfo: Equatable {
     var bingeWatching = true
     /// How long before the end Stremio offers the next episode, in milliseconds.
     var notifyMs = 35_000
+    /// Stremio's preferred audio and subtitle languages, first choice first. No subtitle
+    /// language means subtitles stay off.
+    var audioLanguages: [String] = []
+    var subtitleLanguages: [String] = []
 
     /// How long before the end to offer the next episode. Stremio treats the last 10% as credits;
     /// capped at 2 minutes so long episodes do not show it too early. Stremio's own setting wins
@@ -43,6 +47,8 @@ struct StreamInfo: Equatable {
         }
         if let binge = dict["bingeWatching"] as? Bool { bingeWatching = binge }
         if let ms = (dict["notifyMs"] as? NSNumber)?.intValue, ms > 0 { notifyMs = ms }
+        audioLanguages = dict["audioLanguages"] as? [String] ?? []
+        subtitleLanguages = dict["subtitleLanguages"] as? [String] ?? []
     }
 
     /// Native requests must use HTTPS.

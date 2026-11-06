@@ -54,6 +54,7 @@ final class PlayerViewController: UIViewController {
     var wantsPlaying = true
     var remoteTargets: [(MPRemoteCommand, Any)] = []
     var nowPlayingArtwork: MPMediaItemArtwork?
+    var appliedPreferredTracks = false
     var zoom: CGFloat = 1  // 1 = fit; >1 zoomed/filled
     var filled = false
     private static let vlcLogger = VLCLogBridge()

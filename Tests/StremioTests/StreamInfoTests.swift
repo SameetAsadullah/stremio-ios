@@ -27,6 +27,13 @@ final class StreamInfoTests: XCTestCase {
         XCTAssertEqual(info?.notifyMs, 35_000)
     }
 
+    func testParsesPreferredLanguages() {
+        let info = StreamInfo(["audioLanguages": ["jpn", "eng"], "subtitleLanguages": ["eng"]])
+        XCTAssertEqual(info?.audioLanguages, ["jpn", "eng"])
+        XCTAssertEqual(info?.subtitleLanguages, ["eng"])
+        XCTAssertEqual(StreamInfo([:])?.subtitleLanguages, [])
+    }
+
     func testDropsNonHTTPSImages() {
         let info = StreamInfo(["poster": "http://images.example.com/poster.jpg"])
         XCTAssertNil(info?.poster)
