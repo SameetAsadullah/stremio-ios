@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 
 /// Runs Stremio's streaming server (server.js) *inside the app* via nodejs-mobile,
@@ -119,6 +120,8 @@ final class NodeServer: ObservableObject {
 /// CDN into Application Support (a bundled copy is used if present).
 enum ServerScript {
     static let version = "v4.21.1"
+    /// SHA-256 of the official v4.21.1 file. Change it together with `version`.
+    static let sha256 = "405eb494d6708406a30e716c3cfb5abae7a5e9c7a8b79446d64c3f821385930f"
     static var downloadURL: URL { URL(string: "https://dl.strem.io/server/\(version)/desktop/server.js")! }
 
     static var downloadedPath: String {
@@ -129,8 +132,15 @@ enum ServerScript {
     }
 
     static func localPath() -> String? {
-        if FileManager.default.fileExists(atPath: downloadedPath) { return downloadedPath }
-        return Bundle.main.path(forResource: "server", ofType: "js")
+        if isValid(downloadedPath) { return downloadedPath }
+        try? FileManager.default.removeItem(atPath: downloadedPath)
+        if let bundled = Bundle.main.path(forResource: "server", ofType: "js"), isValid(bundled) { return bundled }
+        return nil
+    }
+
+    private static func isValid(_ path: String) -> Bool {
+        guard let data = FileManager.default.contents(atPath: path) else { return false }
+        return SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined() == sha256
     }
 
     /// Downloads if missing. Completion on main.
@@ -142,6 +152,8 @@ enum ServerScript {
             if let tmp, (resp as? HTTPURLResponse)?.statusCode == 200 {
                 try? FileManager.default.removeItem(atPath: downloadedPath)
                 ok = (try? FileManager.default.moveItem(atPath: tmp.path, toPath: downloadedPath)) != nil
+                    && isValid(downloadedPath)
+                if !ok { try? FileManager.default.removeItem(atPath: downloadedPath) }
             }
             NSLog("[STREMIOAPP][node] server.js download %@ %@", ok ? "ok" : "FAILED", err?.localizedDescription ?? "")
             DispatchQueue.main.async { completion(ok) }
