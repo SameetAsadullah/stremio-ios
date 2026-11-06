@@ -30,13 +30,17 @@ final class PlaybackController: ObservableObject {
     /// Subtitles offered by Stremio's subtitle addons for the current item.
     @Published var externalSubtitles: [ExternalSubtitle] = []
     weak var session: StremioSession?
+    let orientation = PlayerOrientation()
 
     /// True from showing the player until its close animation ends.
     private var playerOnScreen = false
     private var pendingStream: Stream?
+    /// True from Next Episode until the next stream arrives.
+    private var awaitingNextEpisode = false
 
     func play(url: URL, title: String, startTime: Int = 0) {
         let next = Stream(url: url, title: title, startTime: startTime)
+        awaitingNextEpisode = false
         // iOS ignores a new full-screen player while the old one is still closing, which happens
         // when the next episode's stream arrives quickly. Show it once the close has finished.
         if stream == nil && playerOnScreen {
@@ -50,7 +54,12 @@ final class PlaybackController: ObservableObject {
 
     func playerDidClose() {
         playerOnScreen = false
-        guard let next = pendingStream else { return }
+        guard let next = pendingStream else {
+            // Rotating only after the slide-down ends keeps the two animations apart, and iOS
+            // drops orientation requests made during it.
+            if awaitingNextEpisode { orientation.restoreUnlessPlayerOpens() } else { orientation.restore() }
+            return
+        }
         pendingStream = nil
         stream = next
         playerOnScreen = true
@@ -70,8 +79,13 @@ final class PlaybackController: ObservableObject {
     func playNext(orElse close: @escaping () -> Void) {
         guard let session else { return close() }
         stop()
+        awaitingNextEpisode = true
         session.playNext { started in
-            if !started { close() }
+            guard !started else { return }
+            self.awaitingNextEpisode = false
+            // While the player is still sliding away, playerDidClose rotates back.
+            if !self.playerOnScreen { self.orientation.restore() }
+            close()
         }
     }
 
