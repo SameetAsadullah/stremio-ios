@@ -42,7 +42,10 @@ final class NodeServer: ObservableObject {
         readyTimer?.invalidate()
         var attempts = 0
         readyTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] timer in
-            guard let self else { timer.invalidate(); return }
+            guard let self else {
+                timer.invalidate()
+                return
+            }
             attempts += 1
             var req = URLRequest(url: Self.baseURL.appendingPathComponent("settings"))
             req.timeoutInterval = 2
@@ -82,11 +85,11 @@ final class NodeServer: ObservableObject {
         }
 
         setenv("HOME", caches, 1)
-        setenv("APP_PATH", data, 1)          // engine cache lives under Caches (purgeable)
+        setenv("APP_PATH", data, 1)  // engine cache lives under Caches (purgeable)
         setenv("NO_CORS", "1", 1)
         setenv("CASTING_DISABLED", "1", 1)
-        setenv("NO_HTTPS_SERVER", "1", 1)    // no cert fetch / :12470 on iOS
-        setenv("HLS_V2_DISABLED", "1", 1)    // transcoder shells out to ffmpeg — impossible here
+        setenv("NO_HTTPS_SERVER", "1", 1)  // no cert fetch / :12470 on iOS
+        setenv("HLS_V2_DISABLED", "1", 1)  // transcoder shells out to ffmpeg — impossible here
         setenv("UV_THREADPOOL_SIZE", "16", 1)
         FileManager.default.changeCurrentDirectoryPath(caches)
 
@@ -104,7 +107,7 @@ final class NodeServer: ObservableObject {
         let args = ["node", "-r", preloadPath, serverJS]
         var cargs: [UnsafeMutablePointer<CChar>?] = args.map { strdup($0) }
         let code = cargs.withUnsafeMutableBufferPointer { node_start(Int32(args.count), $0.baseAddress) }
-        cargs.forEach { free($0) }
+        for arg in cargs { free(arg) }
         Log.server.error("exited with code \(code)")
     }
 }
@@ -143,17 +146,23 @@ enum ServerScript {
 
     /// Downloads if missing. Completion on main.
     static func ensure(progress: @escaping (String) -> Void, completion: @escaping (Bool) -> Void) {
-        if localPath() != nil { completion(true); return }
+        if localPath() != nil {
+            completion(true)
+            return
+        }
         progress("Downloading streaming engine\u{2026}")
         let task = URLSession.shared.downloadTask(with: downloadURL) { tmp, resp, err in
             var ok = false
             if let tmp, (resp as? HTTPURLResponse)?.statusCode == 200 {
                 try? FileManager.default.removeItem(atPath: downloadedPath)
-                ok = (try? FileManager.default.moveItem(atPath: tmp.path, toPath: downloadedPath)) != nil
+                ok =
+                    (try? FileManager.default.moveItem(atPath: tmp.path, toPath: downloadedPath)) != nil
                     && isValid(downloadedPath)
                 if !ok { try? FileManager.default.removeItem(atPath: downloadedPath) }
             }
-            if ok { Log.server.info("server.js download ok") } else {
+            if ok {
+                Log.server.info("server.js download ok")
+            } else {
                 Log.server.error("server.js download FAILED \(err?.localizedDescription ?? "", privacy: .public)")
             }
             DispatchQueue.main.async { completion(ok) }

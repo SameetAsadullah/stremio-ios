@@ -4,21 +4,27 @@ extension PlayerViewController {
     static func statsURL(for streamURL: URL) -> URL? {
         let parts = streamURL.pathComponents.filter { $0 != "/" }
         guard let hash = parts.first, hash.count == 40,
-              var components = URLComponents(url: streamURL, resolvingAgainstBaseURL: false) else { return nil }
+            var components = URLComponents(url: streamURL, resolvingAgainstBaseURL: false)
+        else { return nil }
         components.path = "/\(hash)/stats.json"
         components.query = nil
         return components.url
     }
 
     func startStatsPolling() {
-        guard let url = Self.statsURL(for: stream.url) else { statusLabel.isHidden = true; return }
+        guard let url = Self.statsURL(for: stream.url) else {
+            statusLabel.isHidden = true
+            return
+        }
         statusLabel.isHidden = false
         let started = Date()
         statsTimer?.invalidate()
         statsTimer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in
             guard let self, !self.hasRenderedFrame else { return }
             URLSession.shared.dataTask(with: url) { data, _, _ in
-                guard let data, let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return }
+                guard let data, let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+                    return
+                }
                 let peers = json["peers"] as? Int ?? 0
                 let speed = (json["downloadSpeed"] as? Double ?? 0) / 1_000_000
                 let ready = (json["downloaded"] as? Double ?? 0) / 1_000_000
@@ -29,14 +35,20 @@ extension PlayerViewController {
                 } else if peers == 0 {
                     text = "Finding sources\u{2026}"
                 } else {
-                    text = String(format: "Buffering from %d sources \u{00B7} %.1f MB/s \u{00B7} %.0f MB ready", peers, speed, ready)
+                    text = String(
+                        format: "Buffering from %d sources \u{00B7} %.1f MB/s \u{00B7} %.0f MB ready", peers, speed,
+                        ready)
                 }
                 DispatchQueue.main.async { self.statusLabel.text = text }
             }.resume()
         }
     }
 
-    func stopStatsPolling() { statsTimer?.invalidate(); statsTimer = nil; statusLabel.isHidden = true }
+    func stopStatsPolling() {
+        statsTimer?.invalidate()
+        statsTimer = nil
+        statusLabel.isHidden = true
+    }
 
     // MARK: - Error / retry
 
@@ -69,7 +81,9 @@ extension PlayerViewController {
         let retry = UIButton(configuration: retryConfig)
         retry.addTarget(self, action: #selector(didTapRetry), for: .touchUpInside)
         let stack = UIStackView(arrangedSubviews: [title, body, retry])
-        stack.axis = .vertical; stack.spacing = 14; stack.alignment = .center
+        stack.axis = .vertical
+        stack.spacing = 14
+        stack.alignment = .center
         stack.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(stack)
         NSLayoutConstraint.activate([
@@ -83,7 +97,8 @@ extension PlayerViewController {
     }
 
     @objc private func didTapRetry() {
-        errorView?.removeFromSuperview(); errorView = nil
+        errorView?.removeFromSuperview()
+        errorView = nil
         hasRenderedFrame = false
         spinner.startAnimating()
         stopPlayerAsync()

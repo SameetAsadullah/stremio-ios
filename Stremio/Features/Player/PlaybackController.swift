@@ -30,7 +30,8 @@ final class PlaybackController: ObservableObject {
 
     func stop() {
         Log.player.debug("PlaybackController.stop() — dismissing player")
-        stream = nil; externalSubtitles = []
+        stream = nil
+        externalSubtitles = []
     }
 }
 

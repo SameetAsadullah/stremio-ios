@@ -18,8 +18,9 @@ final class StreamProxy {
     /// An absolute or scheme-relative target would replace the mirror host.
     static func mirrorURL(forTarget target: String) -> URL? {
         guard target.hasPrefix("/"), !target.hasPrefix("//"),
-              let url = URL(string: target, relativeTo: mirrorOrigin)?.absoluteURL,
-              url.host == mirrorOrigin.host else { return nil }
+            let url = URL(string: target, relativeTo: mirrorOrigin)?.absoluteURL,
+            url.host == mirrorOrigin.host
+        else { return nil }
         return url
     }
 
@@ -40,7 +41,9 @@ final class StreamProxy {
     func register(origin: URL) -> URL {
         startIfNeeded()
         let token = UUID().uuidString
-        lock.lock(); routes[token] = Route(origin: origin); lock.unlock()
+        lock.lock()
+        routes[token] = Route(origin: origin)
+        lock.unlock()
         return URL(string: "http://127.0.0.1:\(port)/\(token)")!
     }
 
@@ -59,7 +62,9 @@ final class StreamProxy {
         let saved = UserDefaults.standard.integer(forKey: Self.portDefaultsKey)
         let preferred = (saved > 0 && saved <= 65535) ? UInt16(saved) : Self.preferredPort
         if listen(on: preferred) { return }
-        Log.proxy.error("port \(Int(preferred)) unavailable — using an ephemeral port; the built-in web app starts a fresh session this launch")
+        Log.proxy.error(
+            "port \(Int(preferred)) unavailable — using an ephemeral port; the built-in web app starts a fresh session this launch"
+        )
         _ = listen(on: nil)
     }
 
@@ -69,13 +74,16 @@ final class StreamProxy {
         let wanted = desired.flatMap { NWEndpoint.Port(rawValue: $0) } ?? .any
         params.requiredLocalEndpoint = NWEndpoint.hostPort(host: "127.0.0.1", port: wanted)
         guard let l = try? NWListener(using: params) else {
-            Log.proxy.error("failed to create listener"); return false
+            Log.proxy.error("failed to create listener")
+            return false
         }
         let ready = DispatchSemaphore(value: 0)
         l.stateUpdateHandler = { state in
             switch state {
             case .ready: ready.signal()
-            case .failed(let err): Log.proxy.error("listener failed: \(err.localizedDescription, privacy: .public)"); ready.signal()
+            case .failed(let err):
+                Log.proxy.error("listener failed: \(err.localizedDescription, privacy: .public)")
+                ready.signal()
             case .cancelled: ready.signal()
             default: break
             }
@@ -118,9 +126,12 @@ final class StreamProxy {
     private func serve(_ conn: NWConnection, head: String) {
         let lines = head.components(separatedBy: "\r\n")
         let parts = lines.first?.split(separator: " ") ?? []
-        guard parts.count >= 2 else { conn.cancel(); return }
+        guard parts.count >= 2 else {
+            conn.cancel()
+            return
+        }
         let method = String(parts[0])
-        let target = String(parts[1])                                   // path + query
+        let target = String(parts[1])  // path + query
         let firstComponent = target.split(separator: "/", omittingEmptySubsequences: true).first.map(String.init) ?? ""
         let token = firstComponent.split(separator: "?").first.map(String.init) ?? ""
 
@@ -131,7 +142,9 @@ final class StreamProxy {
                 line[line.index(after: colon)...].trimmingCharacters(in: .whitespaces)
         }
 
-        lock.lock(); let route = routes[token]; lock.unlock()
+        lock.lock()
+        let route = routes[token]
+        lock.unlock()
 
         let req: URLRequest
         let relay: Relay
@@ -145,7 +158,10 @@ final class StreamProxy {
             req = r
             relay = Relay(conn: conn, request: r, followRedirects: false, maxAttempts: 45)
         } else {
-            guard let url = Self.mirrorURL(forTarget: target) else { conn.cancel(); return }
+            guard let url = Self.mirrorURL(forTarget: target) else {
+                conn.cancel()
+                return
+            }
             var r = URLRequest(url: url)
             r.httpMethod = (method == "HEAD") ? "HEAD" : "GET"
             for key in ["accept", "accept-language", "range", "if-none-match", "if-modified-since", "user-agent"] {
@@ -222,7 +238,9 @@ private final class Relay: NSObject, URLSessionDataDelegate {
     /// The origin request for the current leg: the original one, or a Range
     /// request continuing from where the previous leg stopped.
     private func currentRequest() -> URLRequest {
-        lock.lock(); let sent = delivered; lock.unlock()
+        lock.lock()
+        let sent = delivered
+        lock.unlock()
         guard sent > 0 else { return request }
         var r = request
         r.setValue("bytes=\(rangeStart + sent)-", forHTTPHeaderField: "Range")
@@ -242,7 +260,9 @@ private final class Relay: NSObject, URLSessionDataDelegate {
     }
 
     private func scheduleRetry(reason: String) {
-        Log.proxy.info("origin not ready (\(reason, privacy: .public)) — retry \(self.attempts)/\(self.maxAttempts) in \(self.retryDelay)s")
+        Log.proxy.info(
+            "origin not ready (\(reason, privacy: .public)) — retry \(self.attempts)/\(self.maxAttempts) in \(self.retryDelay)s"
+        )
         retrying = true
         DispatchQueue.global().asyncAfter(deadline: .now() + retryDelay) { [weak self] in
             self?.retrying = false
@@ -276,7 +296,9 @@ private final class Relay: NSObject, URLSessionDataDelegate {
             finish()
             return
         }
-        Log.proxy.info("mid-stream break at \(offset) (\(reason, privacy: .public)) — resuming \(attempt)/\(self.maxResumeAttempts) in \(self.resumeDelay)s")
+        Log.proxy.info(
+            "mid-stream break at \(offset) (\(reason, privacy: .public)) — resuming \(attempt)/\(self.maxResumeAttempts) in \(self.resumeDelay)s"
+        )
         retrying = true
         DispatchQueue.global().asyncAfter(deadline: .now() + resumeDelay) { [weak self] in
             guard let self else { return }
@@ -289,24 +311,38 @@ private final class Relay: NSObject, URLSessionDataDelegate {
     /// unrecoverable.
     private func finish() {
         lock.lock()
-        if finished { lock.unlock(); return }
+        if finished {
+            lock.unlock()
+            return
+        }
         finished = true
         lock.unlock()
-        conn.send(content: nil, contentContext: .finalMessage, isComplete: true,
-                  completion: .contentProcessed { [conn] _ in conn.cancel() })
+        conn.send(
+            content: nil, contentContext: .finalMessage, isComplete: true,
+            completion: .contentProcessed { [conn] _ in conn.cancel() })
     }
 
-    func urlSession(_ session: URLSession, task: URLSessionTask,
-                    willPerformHTTPRedirection response: HTTPURLResponse, newRequest request: URLRequest,
-                    completionHandler: @escaping (URLRequest?) -> Void) {
-        if followRedirects { completionHandler(request); return }
+    func urlSession(
+        _ session: URLSession, task: URLSessionTask,
+        willPerformHTTPRedirection response: HTTPURLResponse, newRequest request: URLRequest,
+        completionHandler: @escaping (URLRequest?) -> Void
+    ) {
+        if followRedirects {
+            completionHandler(request)
+            return
+        }
         Log.proxy.error("origin redirected \(response.statusCode) -> \(request.url?.absoluteString ?? "")")
-        completionHandler(nil)   // a login bounce is a failure we want to see, not follow
+        completionHandler(nil)  // a login bounce is a failure we want to see, not follow
     }
 
-    func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive response: URLResponse,
-                    completionHandler: @escaping (URLSession.ResponseDisposition) -> Void) {
-        guard let http = response as? HTTPURLResponse else { completionHandler(.cancel); return }
+    func urlSession(
+        _ session: URLSession, dataTask: URLSessionDataTask, didReceive response: URLResponse,
+        completionHandler: @escaping (URLSession.ResponseDisposition) -> Void
+    ) {
+        guard let http = response as? HTTPURLResponse else {
+            completionHandler(.cancel)
+            return
+        }
 
         // Any response arriving after the head was written belongs to a resumed
         // leg: the client is mid-body and must receive only the missing bytes.
@@ -325,7 +361,9 @@ private final class Relay: NSObject, URLSessionDataDelegate {
                 }
                 return
             }
-            Log.proxy.info("resumed at \(self.rangeStart + self.delivered) (\(http.value(forHTTPHeaderField: "Content-Range") ?? "-", privacy: .public))")
+            Log.proxy.info(
+                "resumed at \(self.rangeStart + self.delivered) (\(http.value(forHTTPHeaderField: "Content-Range") ?? "-", privacy: .public))"
+            )
             completionHandler(.allow)
             return
         }
@@ -338,21 +376,29 @@ private final class Relay: NSObject, URLSessionDataDelegate {
 
         let reason: String
         switch http.statusCode {
-        case 200: reason = "OK"; case 206: reason = "Partial Content"; case 304: reason = "Not Modified"
-        case 404: reason = "Not Found"; default: reason = "Status"
+        case 200: reason = "OK"
+        case 206: reason = "Partial Content"
+        case 304: reason = "Not Modified"
+        case 404: reason = "Not Found"
+        default: reason = "Status"
         }
         var head = "HTTP/1.1 \(http.statusCode) \(reason)\r\n"
         // URLSession already decompressed the body, so a Content-Length from an
         // encoded response would be wrong; let EOF (Connection: close) delimit it.
         let encoded = http.value(forHTTPHeaderField: "Content-Encoding") != nil
-        let passthrough: Set<String> = ["content-type", "content-range", "accept-ranges", "last-modified", "etag", "cache-control"]
+        let passthrough: Set<String> = [
+            "content-type", "content-range", "accept-ranges", "last-modified", "etag", "cache-control",
+        ]
         for (k, v) in http.allHeaderFields {
-            let key = "\(k)"; let lk = key.lowercased()
+            let key = "\(k)"
+            let lk = key.lowercased()
             if passthrough.contains(lk) || (lk == "content-length" && !encoded) { head += "\(key): \(v)\r\n" }
         }
         head += "Connection: close\r\n\r\n"
         if !followRedirects {
-            Log.proxy.debug("origin \(http.statusCode) type=\(http.value(forHTTPHeaderField: "Content-Type") ?? "-", privacy: .public) range=\(http.value(forHTTPHeaderField: "Content-Range") ?? "-", privacy: .public) len=\(http.value(forHTTPHeaderField: "Content-Length") ?? "-", privacy: .public) (attempt \(self.attempts))")
+            Log.proxy.debug(
+                "origin \(http.statusCode) type=\(http.value(forHTTPHeaderField: "Content-Type") ?? "-", privacy: .public) range=\(http.value(forHTTPHeaderField: "Content-Range") ?? "-", privacy: .public) len=\(http.value(forHTTPHeaderField: "Content-Length") ?? "-", privacy: .public) (attempt \(self.attempts))"
+            )
         }
         headWritten = true
         // Body bytes this response promised, so a silent truncation can be told
@@ -371,27 +417,42 @@ private final class Relay: NSObject, URLSessionDataDelegate {
         // Bytes are counted as owed the moment they are queued, so a resume
         // after a failed send cannot ask the origin for them twice.
         delivered += Int64(data.count)
-        resumeAttempts = 0                     // real progress: spend the budget again if needed
-        if inflight > 8_000_000 && !suspended { suspended = true; dataTask.suspend() }
+        resumeAttempts = 0  // real progress: spend the budget again if needed
+        if inflight > 8_000_000 && !suspended {
+            suspended = true
+            dataTask.suspend()
+        }
         lock.unlock()
-        conn.send(content: data, completion: .contentProcessed { [weak self] error in
-            guard let self else { return }
-            if error != nil {
-                self.lock.lock(); self.clientGone = true; self.lock.unlock()
-                dataTask.cancel(); self.conn.cancel(); return
-            }
-            self.lock.lock()
-            self.inflight -= data.count
-            if self.suspended && self.inflight < 2_000_000 { self.suspended = false; dataTask.resume() }
-            self.lock.unlock()
-        })
+        conn.send(
+            content: data,
+            completion: .contentProcessed { [weak self] error in
+                guard let self else { return }
+                if error != nil {
+                    self.lock.lock()
+                    self.clientGone = true
+                    self.lock.unlock()
+                    dataTask.cancel()
+                    self.conn.cancel()
+                    return
+                }
+                self.lock.lock()
+                self.inflight -= data.count
+                if self.suspended && self.inflight < 2_000_000 {
+                    self.suspended = false
+                    dataTask.resume()
+                }
+                self.lock.unlock()
+            })
     }
 
     func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
         defer { session.finishTasksAndInvalidate() }
         if retrying { return }
         if !headWritten {
-            if let error, attempts < maxAttempts { scheduleRetry(reason: error.localizedDescription); return }
+            if let error, attempts < maxAttempts {
+                scheduleRetry(reason: error.localizedDescription)
+                return
+            }
             fail(502, error == nil ? "Stream did not start" : "Upstream error")
             return
         }
@@ -399,13 +460,17 @@ private final class Relay: NSObject, URLSessionDataDelegate {
         let gone = clientGone
         let sent = delivered
         lock.unlock()
-        if gone { finish(); return }
+        if gone {
+            finish()
+            return
+        }
 
         // A clean EOF short of the promised length is a truncation, not an end
         // of file, so it is resumed like an explicit error.
         if let expected = expectedBody, sent < expected {
-            scheduleResume(reason: error?.localizedDescription
-                           ?? "origin closed at \(sent)/\(expected) bytes")
+            scheduleResume(
+                reason: error?.localizedDescription
+                    ?? "origin closed at \(sent)/\(expected) bytes")
             return
         }
         if expectedBody == nil, let error {

@@ -1,5 +1,5 @@
-import UIKit
 import Combine
+import UIKit
 
 /// TV output. When the phone is AirPlay-mirroring (Apple TV, AirPlay-2 TVs) or on
 /// an HDMI adapter, iOS hands the app a second, non-interactive display scene.
@@ -25,7 +25,9 @@ final class ExternalDisplaySceneDelegate: NSObject, UIWindowSceneDelegate {
         w.rootViewController = vc
         w.isHidden = false
         window = w
-        Log.tv.info("external display connected screen=\(NSCoder.string(for: ws.screen.bounds.size), privacy: .public) window=\(NSCoder.string(for: w.bounds.size), privacy: .public)")
+        Log.tv.info(
+            "external display connected screen=\(NSCoder.string(for: ws.screen.bounds.size), privacy: .public) window=\(NSCoder.string(for: w.bounds.size), privacy: .public)"
+        )
         ExternalDisplay.shared.attach(vc.videoSurface)
     }
 
@@ -35,7 +37,6 @@ final class ExternalDisplaySceneDelegate: NSObject, UIWindowSceneDelegate {
         window = nil
     }
 }
-
 
 /// Root of the TV window: a branded idle screen, with a full-bleed surface VLC draws into.
 final class ExternalDisplayViewController: UIViewController {
@@ -54,8 +55,10 @@ final class ExternalDisplayViewController: UIViewController {
         idle.font = .systemFont(ofSize: 48, weight: .semibold)
         idle.translatesAutoresizingMaskIntoConstraints = false
         view.insertSubview(idle, belowSubview: videoSurface)
-        NSLayoutConstraint.activate([idle.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-                                     idle.centerYAnchor.constraint(equalTo: view.centerYAnchor)])
+        NSLayoutConstraint.activate([
+            idle.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            idle.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+        ])
     }
 
     override func viewDidLayoutSubviews() {

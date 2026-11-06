@@ -13,8 +13,10 @@ struct OnboardingView: View {
 
     var body: some View {
         ZStack {
-            LinearGradient(colors: [Color(red: 0.08, green: 0.07, blue: 0.16), .black],
-                           startPoint: .top, endPoint: .bottom).ignoresSafeArea()
+            LinearGradient(
+                colors: [Color(red: 0.08, green: 0.07, blue: 0.16), .black],
+                startPoint: .top, endPoint: .bottom
+            ).ignoresSafeArea()
             VStack(alignment: .leading, spacing: 22) {
                 logo.padding(.top, 24)
 
@@ -22,9 +24,11 @@ struct OnboardingView: View {
                     .font(.system(size: 30, weight: .bold))
                     .foregroundStyle(.white)
 
-                Text("Torrents play on this device through Stremio\u{2019}s streaming engine. The app downloads it once (about 7 MB).")
-                    .font(.subheadline)
-                    .foregroundStyle(.white.opacity(0.7))
+                Text(
+                    "Torrents play on this device through Stremio\u{2019}s streaming engine. The app downloads it once (about 7 MB)."
+                )
+                .font(.subheadline)
+                .foregroundStyle(.white.opacity(0.7))
 
                 Spacer()
 
@@ -50,14 +54,16 @@ struct OnboardingView: View {
     private func finish() {
         error = nil
         busy = true
-        ServerScript.ensure(progress: { busyText = $0 }) { ok in
-            busy = false
-            if ok {
-                onDone()
-            } else {
-                error = "Couldn\u{2019}t download the streaming engine. Check your connection and try again."
-            }
-        }
+        ServerScript.ensure(
+            progress: { busyText = $0 },
+            completion: { ok in
+                busy = false
+                if ok {
+                    onDone()
+                } else {
+                    error = "Couldn\u{2019}t download the streaming engine. Check your connection and try again."
+                }
+            })
     }
 
     private var logo: some View {

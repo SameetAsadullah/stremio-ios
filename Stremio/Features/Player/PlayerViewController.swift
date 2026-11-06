@@ -11,7 +11,7 @@ final class PlayerViewController: UIViewController {
     var selectedExternalSubtitle: URL?
 
     let videoView = UIView()
-    private let tapCatcher = UIView()          // above VLC's render view, owns the gestures
+    private let tapCatcher = UIView()  // above VLC's render view, owns the gestures
     let spinner = UIActivityIndicatorView(style: .large)
     let statusLabel = UILabel()
     let controls = PassthroughView()
@@ -42,7 +42,7 @@ final class PlayerViewController: UIViewController {
     var hasRenderedFrame = false
     private var closed = false
 
-    var zoom: CGFloat = 1                // 1 = fit; >1 zoomed/filled
+    var zoom: CGFloat = 1  // 1 = fit; >1 zoomed/filled
     var filled = false
     private static let vlcLogger = VLCLogBridge()
 
@@ -54,7 +54,10 @@ final class PlayerViewController: UIViewController {
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
-    deinit { Log.player.debug("player VC deinit"); stopPlayerAsync() }
+    deinit {
+        Log.player.debug("player VC deinit")
+        stopPlayerAsync()
+    }
 
     private static func symbol(_ name: String, size: CGFloat = 22) -> UIImage? {
         UIImage(systemName: name, withConfiguration: UIImage.SymbolConfiguration(pointSize: size))
@@ -83,7 +86,8 @@ final class PlayerViewController: UIViewController {
         videoView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         view.addSubview(videoView)
 
-        let icon = UIImageView(image: UIImage(systemName: "tv", withConfiguration: UIImage.SymbolConfiguration(pointSize: 44)))
+        let icon = UIImageView(
+            image: UIImage(systemName: "tv", withConfiguration: UIImage.SymbolConfiguration(pointSize: 44)))
         icon.tintColor = UIColor.white.withAlphaComponent(0.9)
         let label = UILabel()
         label.text = "Playing on your TV"
@@ -96,7 +100,7 @@ final class PlayerViewController: UIViewController {
         tvPlaceholder.axis = .vertical
         tvPlaceholder.alignment = .center
         tvPlaceholder.spacing = 8
-        [icon, label, sub].forEach { tvPlaceholder.addArrangedSubview($0) }
+        for item in [icon, label, sub] { tvPlaceholder.addArrangedSubview(item) }
         tvPlaceholder.isHidden = true
         tvPlaceholder.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(tvPlaceholder)
@@ -117,7 +121,10 @@ final class PlayerViewController: UIViewController {
         doubleTap.numberOfTapsRequired = 2
         tap.require(toFail: doubleTap)
         let pinch = UIPinchGestureRecognizer(target: self, action: #selector(didPinch))
-        for g in [tap, doubleTap] as [UIGestureRecognizer] { g.delegate = self; tapCatcher.addGestureRecognizer(g) }
+        for g in [tap, doubleTap] as [UIGestureRecognizer] {
+            g.delegate = self
+            tapCatcher.addGestureRecognizer(g)
+        }
         pinch.delegate = self
         tapCatcher.addGestureRecognizer(pinch)
     }
@@ -272,8 +279,10 @@ final class PlayerViewController: UIViewController {
     /// input it blocks, which is what froze "close" mid-buffer. Detach it.
     func stopPlayerAsync() {
         tvCancellable = nil
-        statsTimer?.invalidate(); statsTimer = nil
-        controlsTimer?.invalidate(); controlsTimer = nil
+        statsTimer?.invalidate()
+        statsTimer = nil
+        controlsTimer?.invalidate()
+        controlsTimer = nil
         guard let p = player else { return }
         player = nil
         DispatchQueue.global(qos: .userInitiated).async { p.stop() }
@@ -286,7 +295,11 @@ final class PlayerViewController: UIViewController {
         guard let player else { return }
         let target: UIView = tv ?? videoView
         tvPlaceholder.isHidden = (tv == nil)
-        if tv != nil { videoView.transform = .identity; zoom = 1; filled = false }
+        if tv != nil {
+            videoView.transform = .identity
+            zoom = 1
+            filled = false
+        }
         let live = hasRenderedFrame && (player.isPlaying || player.state == .paused || player.state == .buffering)
         if live, let media = player.media {
             let pos = player.position
@@ -305,7 +318,8 @@ final class PlayerViewController: UIViewController {
     @objc private func didTapCast() {
         let onTV = ExternalDisplay.shared.isConnected
         let title = onTV ? "Playing on your TV" : "Play on a TV"
-        let msg = onTV
+        let msg =
+            onTV
             ? "The video is on the connected display. Disconnect AirPlay / the HDMI adapter to bring it back to the phone."
             : "Plays any file on any TV \u{2014} the phone decodes it and sends the picture:\n\n1. Open Control Center\n2. Tap Screen Mirroring\n3. Pick your Apple TV or AirPlay TV\n\nThe video fills the TV (not a mirrored phone screen) and you keep the controls here. A USB-C/Lightning-to-HDMI adapter works the same way."
         let sheet = UIAlertController(title: title, message: msg, preferredStyle: .alert)
@@ -319,8 +333,8 @@ final class PlayerViewController: UIViewController {
     @objc private func didTapClose() {
         guard !closed else { return }
         closed = true
-        stopPlayerAsync()      // detached, non-blocking
-        onClose()              // dismiss immediately
+        stopPlayerAsync()  // detached, non-blocking
+        onClose()  // dismiss immediately
     }
 
     @objc private func didTapPlayPause() {
@@ -335,11 +349,18 @@ final class PlayerViewController: UIViewController {
         scheduleControlsHide()
     }
 
-    @objc private func didTapSkipBack() { player?.jumpBackward(10); scheduleControlsHide() }
-    @objc private func didTapSkipForward() { player?.jumpForward(10); scheduleControlsHide() }
+    @objc private func didTapSkipBack() {
+        player?.jumpBackward(10)
+        scheduleControlsHide()
+    }
+    @objc private func didTapSkipForward() {
+        player?.jumpForward(10)
+        scheduleControlsHide()
+    }
     @objc private func scrubStart() { isScrubbing = true }
     @objc private func scrubEnd() {
         player?.position = slider.value
-        isScrubbing = false; scheduleControlsHide()
+        isScrubbing = false
+        scheduleControlsHide()
     }
 }

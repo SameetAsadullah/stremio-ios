@@ -67,7 +67,7 @@ extension PlayerViewController: UIGestureRecognizerDelegate {
 
     func scheduleControlsHide() {
         #if VLC_SELFTEST
-        return
+            return
         #endif
         controlsTimer?.invalidate()
         controlsTimer = Timer.scheduledTimer(withTimeInterval: 4.5, repeats: false) { [weak self] _ in
@@ -81,6 +81,8 @@ extension PlayerViewController: UIGestureRecognizerDelegate {
     func gestureRecognizer(_ g: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
         !(touch.view is UIControl)
     }
-    func gestureRecognizer(_ g: UIGestureRecognizer,
-                           shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool { true }
+    func gestureRecognizer(
+        _ g: UIGestureRecognizer,
+        shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer
+    ) -> Bool { true }
 }

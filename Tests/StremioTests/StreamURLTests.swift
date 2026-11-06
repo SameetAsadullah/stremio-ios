@@ -1,4 +1,5 @@
 import XCTest
+
 @testable import Stremio
 
 final class StreamURLTests: XCTestCase {

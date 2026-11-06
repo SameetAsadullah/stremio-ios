@@ -15,22 +15,27 @@ struct WebView: UIViewRepresentable {
         // .default() is a persistent store, so the Stremio login survives app restarts.
         config.websiteDataStore = .default()
 
-        let userScript = WKUserScript(source: UserScripts.source(named: "intercept"),
-                                      injectionTime: .atDocumentStart,
-                                      forMainFrameOnly: false)
+        let userScript = WKUserScript(
+            source: UserScripts.source(named: "intercept"),
+            injectionTime: .atDocumentStart,
+            forMainFrameOnly: false)
         config.userContentController.addUserScript(userScript)
         // Pin Stremio Web's streaming server to the in-app one, even if the
         // account has a different server URL synced into its settings.
-        config.userContentController.addUserScript(WKUserScript(source: UserScripts.source(named: "pin-local-server"),
-                                                                injectionTime: .atDocumentStart,
-                                                                forMainFrameOnly: true))
+        config.userContentController.addUserScript(
+            WKUserScript(
+                source: UserScripts.source(named: "pin-local-server"),
+                injectionTime: .atDocumentStart,
+                forMainFrameOnly: true))
         // Weak proxy: userContentController retains the handler strongly, and the
         // coordinator retains the web view — a direct add() would leak both.
         config.userContentController.add(WeakScriptHandler(context.coordinator), name: "vlc")
         config.userContentController.add(WeakScriptHandler(context.coordinator), name: "bg")
-        config.userContentController.addUserScript(WKUserScript(source: UserScripts.source(named: "background-color"),
-                                                                injectionTime: .atDocumentEnd,
-                                                                forMainFrameOnly: true))
+        config.userContentController.addUserScript(
+            WKUserScript(
+                source: UserScripts.source(named: "background-color"),
+                injectionTime: .atDocumentEnd,
+                forMainFrameOnly: true))
 
         let webView = WKWebView(frame: .zero, configuration: config)
         webView.navigationDelegate = context.coordinator
@@ -57,8 +62,10 @@ struct WebView: UIViewRepresentable {
                 .replacingOccurrences(of: "rgb(", with: "")
                 .replacingOccurrences(of: ")", with: "")
                 .split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
-            guard nums.count >= 3, let r = Double(nums[0]), let g = Double(nums[1]), let b = Double(nums[2]) else { return nil }
-            return UIColor(red: r/255, green: g/255, blue: b/255, alpha: 1)
+            guard nums.count >= 3, let r = Double(nums[0]), let g = Double(nums[1]), let b = Double(nums[2]) else {
+                return nil
+            }
+            return UIColor(red: r / 255, green: g / 255, blue: b / 255, alpha: 1)
         }
 
         // MARK: navigation
@@ -72,7 +79,9 @@ struct WebView: UIViewRepresentable {
         func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
             handleFailure(error)
         }
-        func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
+        func webView(
+            _ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error
+        ) {
             handleFailure(error)
         }
         private func handleFailure(_ error: Error) {
@@ -85,10 +94,13 @@ struct WebView: UIViewRepresentable {
         // Social logins, add-on configure pages and share links use window.open.
         // Facebook refuses logins in embedded web views, so show a Safari sheet.
         // The page polls Stremio's API until the login in the sheet completes.
-        func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration,
-                     for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
+        func webView(
+            _ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration,
+            for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures
+        ) -> WKWebView? {
             guard let url = navigationAction.request.url,
-                  url.scheme == "https" || url.scheme == "http" else { return nil }
+                url.scheme == "https" || url.scheme == "http"
+            else { return nil }
             var top = webView.window?.rootViewController
             while let next = top?.presentedViewController { top = next }
             Log.web.debug("new window \(url.absoluteString)")
@@ -97,8 +109,10 @@ struct WebView: UIViewRepresentable {
         }
 
         // MARK: stream interception
-        func userContentController(_ userContentController: WKUserContentController,
-                                   didReceive message: WKScriptMessage) {
+        func userContentController(
+            _ userContentController: WKUserContentController,
+            didReceive message: WKScriptMessage
+        ) {
             if message.name == "bg", let css = message.body as? String, let color = Self.color(fromCSS: css) {
                 DispatchQueue.main.async {
                     self.model.chromeColor = color
@@ -108,11 +122,13 @@ struct WebView: UIViewRepresentable {
                 return
             }
             guard message.name == "vlc",
-                  let body = message.body as? String,
-                  let data = body.data(using: .utf8),
-                  let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return }
+                let body = message.body as? String,
+                let data = body.data(using: .utf8),
+                let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+            else { return }
             if (obj["kind"] as? String) == "subtitles" {
-                let items = (obj["items"] as? [[String: Any]] ?? []).compactMap { d -> PlaybackController.ExternalSubtitle? in
+                let items = (obj["items"] as? [[String: Any]] ?? []).compactMap {
+                    d -> PlaybackController.ExternalSubtitle? in
                     guard let u = d["url"] as? String, let url = URL(string: u) else { return nil }
                     return PlaybackController.ExternalSubtitle(lang: d["lang"] as? String ?? "", url: url)
                 }

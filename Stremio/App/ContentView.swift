@@ -18,10 +18,11 @@ struct StremioHostView: View {
         Log.player.debug("StremioHostView init (new PlaybackController)")
         let playback = PlaybackController()
         _playback = StateObject(wrappedValue: playback)
-        _model = StateObject(wrappedValue: WebViewModel(
-            url: StreamProxy.shared.mirrorBaseURL,
-            playback: playback
-        ))
+        _model = StateObject(
+            wrappedValue: WebViewModel(
+                url: StreamProxy.shared.mirrorBaseURL,
+                playback: playback
+            ))
     }
 
     var body: some View {
@@ -46,13 +47,14 @@ struct StremioHostView: View {
 
         }
         #if VLC_SELFTEST
-        .onAppear {
-            // Replays the real raw stream through the same cookie path as a Play tap.
-            guard let raw = ProcessInfo.processInfo.environment["STREMIO_SELFTEST_URL"], let url = URL(string: raw) else { return }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
-                model.play(url: url, title: "Self-test stream")
+            .onAppear {
+                // Replays the real raw stream through the same cookie path as a Play tap.
+                guard let raw = ProcessInfo.processInfo.environment["STREMIO_SELFTEST_URL"], let url = URL(string: raw)
+                else { return }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+                    model.play(url: url, title: "Self-test stream")
+                }
             }
-        }
         #endif
         .onAppear {
             ServerScript.ensure(progress: { _ in }) { ok in if ok { NodeServer.shared.startIfNeeded() } }

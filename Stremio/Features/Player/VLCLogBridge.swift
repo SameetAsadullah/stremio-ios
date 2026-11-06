@@ -7,9 +7,10 @@ final class VLCLogBridge: NSObject, VLCLogging {
     var level: VLCLogLevel = .debug
     func handleMessage(_ message: String, logLevel: VLCLogLevel, context: VLCLogContext?) {
         let m = message.lowercased()
-        let keep = (logLevel == .error || logLevel == .warning || m.contains("http")
-            || m.contains("using demux") || m.contains("decoder") || m.contains("codec")
-            || m.contains("videotoolbox")) && !m.contains("too late") && !m.contains("displayed late")
+        let keep =
+            (logLevel == .error || logLevel == .warning || m.contains("http")
+                || m.contains("using demux") || m.contains("decoder") || m.contains("codec")
+                || m.contains("videotoolbox")) && !m.contains("too late") && !m.contains("displayed late")
         guard keep && message.count < 400 else { return }
         if logLevel == .error {
             Log.player.error("vlc: \(message, privacy: .public)")

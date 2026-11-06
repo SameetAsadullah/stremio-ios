@@ -7,7 +7,7 @@ final class WebViewModel: ObservableObject {
     @Published var isLoading = true
     @Published var errorMessage: String?
     /// Background colour reported by the page, used to tint the safe-area chrome.
-    @Published var chromeColor: UIColor = UIColor(red: 0.055, green: 0.043, blue: 0.12, alpha: 1) // Stremio navy
+    @Published var chromeColor: UIColor = UIColor(red: 0.055, green: 0.043, blue: 0.12, alpha: 1)  // Stremio navy
 
     let url: URL
     let playback: PlaybackController
