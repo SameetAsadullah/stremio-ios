@@ -1,13 +1,14 @@
 #!/bin/bash
-# Builds origin/main from a separate clean checkout and installs it over the app on the device.
-# Usage: install-on-iphone.sh <device-id> [days-left]
-# With days-left, it skips while the installed build has more than that many days left.
+# Builds origin/main from a separate clean checkout and installs it over the app on each device.
+# Usage: install-on-iphone.sh <device-id>[,<device-id>...] [days-left]
+# With days-left, it skips each device whose installed build has more than that many days left.
+# One build serves every device: the free profile holds all devices registered to the Apple ID.
 # The launchd agent runs a copy in ~/Library/Application Support/stremio-ios, because launchd jobs
 # cannot read ~/Documents without a privacy prompt. Run scripts/setup-auto-reinstall.sh after a change.
 set -euo pipefail
 export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 
-DEVICE="${1:?usage: install-on-iphone.sh <device-id> [days-left]}"
+IFS=',' read -ra DEVICES <<< "${1:?usage: install-on-iphone.sh <device-id>[,<device-id>...] [days-left]}"
 DAYS_LEFT="${2:-0}"
 BUNDLE_ID="com.sameetasadullah.stremio"
 REPO_URL="https://github.com/SameetAsadullah/stremio-ios.git"
@@ -15,8 +16,8 @@ BASE="$HOME/Library/Application Support/stremio-ios"
 CHECKOUT="$BASE/checkout"
 DERIVED="$BASE/DerivedData"
 APP="$DERIVED/Build/Products/Debug-iphoneos/Stremio.app"
-# Expiry of the installed build's provisioning profile, in seconds since 1970.
-EXPIRES="$BASE/expires"
+# Expiry of the build installed on a device, in seconds since 1970.
+expires_file() { echo "$BASE/expires-$1"; }
 PROFILES="$HOME/Library/Developer/Xcode/UserData/Provisioning Profiles"
 
 log() { echo "$(date '+%F %T') $1"; }
@@ -24,15 +25,25 @@ notify() { osascript -e "display notification \"$1\" with title \"Stremio reinst
 fail() { log "FAILED: $1"; notify "Failed: $1"; exit 1; }
 profile_field() { security cms -D -i "$1" 2>/dev/null | plutil -extract "$2" raw -o - - 2>/dev/null; }
 
-if (( DAYS_LEFT > 0 )) && [[ -f "$EXPIRES" ]]; then
-    hours_left=$(( ($(cat "$EXPIRES") - $(date +%s)) / 3600 ))
-    if (( hours_left > DAYS_LEFT * 24 )); then
-        log "installed build expires in $(( hours_left / 24 )) days, skipped"
-        exit 0
-    fi
-fi
+device_name() {
+    xcrun devicectl device info details --device "$1" 2>/dev/null | sed -n 's/^ *• Device Name: //p' | head -1 | grep . || echo "$1"
+}
 
-log "start"
+due=()
+for device in "${DEVICES[@]}"; do
+    file=$(expires_file "$device")
+    if (( DAYS_LEFT > 0 )) && [[ -f "$file" ]]; then
+        hours_left=$(( ($(cat "$file") - $(date +%s)) / 3600 ))
+        if (( hours_left > DAYS_LEFT * 24 )); then
+            log "$device: installed build expires in $(( hours_left / 24 )) days, skipped"
+            continue
+        fi
+    fi
+    due+=("$device")
+done
+(( ${#due[@]} > 0 )) || exit 0
+
+log "start for ${due[*]}"
 xcodebuild -checkFirstLaunchStatus || fail "Xcode needs its update to finish. Open Xcode once."
 
 mkdir -p "$BASE"
@@ -55,12 +66,22 @@ done
 xcodebuild -project "$CHECKOUT/Stremio.xcodeproj" -scheme Stremio -configuration Debug \
     -destination "generic/platform=iOS" -derivedDataPath "$DERIVED" -allowProvisioningUpdates -quiet build \
     || fail "build of $commit. Check the Apple ID in Xcode → Settings → Accounts."
-xcrun devicectl device install app --device "$DEVICE" "$APP" \
-    || fail "install. Is the device on the same Wi-Fi and unlocked?"
-
 expiry=$(date -j -u -f "%Y-%m-%dT%H:%M:%SZ" "$(profile_field "$APP/embedded.mobileprovision" ExpirationDate)" +%s) \
     || fail "could not read the profile expiry of $commit"
-echo "$expiry" > "$EXPIRES"
 until_text=$(date -r "$expiry" '+%-d %b %H:%M')
-log "installed $commit, runs until $until_text"
-notify "Installed $commit. It runs until $until_text."
+
+# A device that is away or locked keeps its old build and is tried again on the next run.
+failed=()
+for device in "${due[@]}"; do
+    name=$(device_name "$device")
+    if xcrun devicectl device install app --device "$device" "$APP"; then
+        echo "$expiry" > "$(expires_file "$device")"
+        log "$name: installed $commit, runs until $until_text"
+        notify "$name: installed $commit. It runs until $until_text."
+    else
+        failed+=("$name")
+        log "FAILED: $name: install. Is the device on the same Wi-Fi and unlocked?"
+        notify "$name: install failed. Is it on the same Wi-Fi and unlocked?"
+    fi
+done
+(( ${#failed[@]} == 0 ))

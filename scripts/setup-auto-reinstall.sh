@@ -1,11 +1,11 @@
 #!/bin/bash
-# Installs or updates the launchd agent that keeps the app installed on the device.
-# Usage: setup-auto-reinstall.sh <device-id> [hour]   (default hour: 23)
+# Installs or updates the launchd agent that keeps the app installed on the devices.
+# Usage: setup-auto-reinstall.sh <device-id>[,<device-id>...] [hour]   (default hour: 23)
 # Remove: launchctl bootout gui/$(id -u)/com.sameetasadullah.stremio.reinstall
 #         rm ~/Library/LaunchAgents/com.sameetasadullah.stremio.reinstall.plist
 set -euo pipefail
 
-DEVICE="${1:?usage: setup-auto-reinstall.sh <device-id> [hour]}"
+DEVICE="${1:?usage: setup-auto-reinstall.sh <device-id>[,<device-id>...] [hour]}"
 HOUR="${2:-23}"
 LABEL="com.sameetasadullah.stremio.reinstall"
 BASE="$HOME/Library/Application Support/stremio-ios"
@@ -46,4 +46,4 @@ PLIST
 
 launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null || true
 launchctl bootstrap "gui/$(id -u)" "$PLIST"
-echo "Agent $LABEL runs daily at $HOUR:00 and reinstalls when the installed build has 2 days or less left."
+echo "Agent $LABEL runs daily at $HOUR:00 and reinstalls on each device whose build has 2 days or less left."

@@ -110,13 +110,16 @@ The app then downloads Stremio's streaming server (about 7 MB). Log in to Stremi
 A free Apple ID signs the app for 7 days. After that, the app does not open until you install it
 again.
 
-- `scripts/install-on-iphone.sh <device-id> [days-left]` builds `origin/main` from a separate
-  clean checkout and installs it. With `days-left`, it does nothing while the installed build has
-  more days left than that.
-- `scripts/setup-auto-reinstall.sh <device-id> [hour]` installs a launchd agent. The agent runs
-  the install script every day and reinstalls when 2 days or fewer are left.
+- `scripts/install-on-iphone.sh <device-id>[,<device-id>...] [days-left]` builds `origin/main`
+  from a separate clean checkout and installs it on each device. With `days-left`, it skips each
+  device whose installed build has more days left than that.
+- `scripts/setup-auto-reinstall.sh <device-id>[,<device-id>...] [hour]` installs a launchd agent.
+  The agent runs the install script every day and reinstalls on each device with 2 days or fewer
+  left.
 
-The Mac must be on, and the device must be on the same Wi-Fi network and unlocked.
+The Mac must be on, and each device must be on the same Wi-Fi network and unlocked. A device that
+misses a run keeps its build and is tried again the next day. A free Apple ID signs for at most 3
+devices, and a new device must be in Xcode's device list once before its first install.
 
 ## Development
 
