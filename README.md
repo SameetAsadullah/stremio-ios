@@ -192,6 +192,11 @@ stremio-ios/
 
 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) lists the licenses.
 
+## Related
+
+[stremio-mac](https://github.com/SameetAsadullah/stremio-mac) runs Stremio on a Mac with an mpv
+player that uses less battery than the official app.
+
 ## License
 
 [MIT](LICENSE)
