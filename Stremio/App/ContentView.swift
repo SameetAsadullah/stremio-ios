@@ -32,7 +32,7 @@ struct StremioHostView: View {
             Color(model.chromeColor).ignoresSafeArea()
 
             WebView(model: model)
-                .ignoresSafeArea(edges: .bottom)
+                .ignoresSafeArea()
 
             if !model.hasLoaded && model.errorMessage == nil {
                 SplashView().transition(.opacity)

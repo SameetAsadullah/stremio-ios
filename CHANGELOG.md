@@ -10,6 +10,7 @@ All notable changes are listed here. The format follows
 
 - A torrent with few seeders starts to play as soon as its first data arrives. Before, VLC waited
   for 4 MB at a time.
+- The status bar area shows Stremio's own background. Before, it was a darker purple than the page.
 
 ## [1.1.0] - 2026-11-06
 
