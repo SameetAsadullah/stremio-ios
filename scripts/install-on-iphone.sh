@@ -25,19 +25,26 @@ notify() { osascript -e "display notification \"$1\" with title \"Stremio reinst
 fail() { log "FAILED: $1"; notify "Failed: $1"; exit 1; }
 profile_field() { security cms -D -i "$1" 2>/dev/null | plutil -extract "$2" raw -o - - 2>/dev/null; }
 
+# Prints the device name. Fails when the device cannot be reached, for example when it is locked
+# and idle or on another network.
 device_name() {
-    xcrun devicectl device info details --device "$1" 2>/dev/null | sed -n 's/^ *• Device Name: //p' | head -1 | grep . || echo "$1"
+    xcrun devicectl device info details --device "$1" 2>/dev/null | sed -n 's/^ *• Device Name: //p' | head -1 | grep .
 }
 
+# The agent runs every 30 minutes, so a device that cannot be reached is only logged. It notifies
+# when the installed build has less than 6 hours left.
 due=()
 for device in "${DEVICES[@]}"; do
     file=$(expires_file "$device")
-    if (( DAYS_LEFT > 0 )) && [[ -f "$file" ]]; then
-        hours_left=$(( ($(cat "$file") - $(date +%s)) / 3600 ))
-        if (( hours_left > DAYS_LEFT * 24 )); then
-            log "$device: installed build expires in $(( hours_left / 24 )) days, skipped"
-            continue
+    hours_left=-1
+    [[ -f "$file" ]] && hours_left=$(( ($(cat "$file") - $(date +%s)) / 3600 ))
+    (( DAYS_LEFT > 0 && hours_left > DAYS_LEFT * 24 )) && continue
+    if ! device_name "$device" >/dev/null; then
+        log "$device: cannot be reached, skipped"
+        if [[ -f "$file" ]] && (( hours_left < 6 )); then
+            notify "$device: the app expires in $hours_left h. Unlock the phone on the same Wi-Fi as the Mac."
         fi
+        continue
     fi
     due+=("$device")
 done
@@ -73,7 +80,7 @@ until_text=$(date -r "$expiry" '+%-d %b %H:%M')
 # A device that is away or locked keeps its old build and is tried again on the next run.
 failed=()
 for device in "${due[@]}"; do
-    name=$(device_name "$device")
+    name=$(device_name "$device" || echo "$device")
     if xcrun devicectl device install app --device "$device" "$APP"; then
         echo "$expiry" > "$(expires_file "$device")"
         log "$name: installed $commit, runs until $until_text"

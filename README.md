@@ -114,12 +114,13 @@ again.
 - `scripts/install-on-iphone.sh <device-id>[,<device-id>...] [days-left]` builds `origin/main`
   from a separate clean checkout and installs it on each device. With `days-left`, it skips each
   device whose installed build has more days left than that.
-- `scripts/setup-auto-reinstall.sh <device-id>[,<device-id>...] [hour]` installs a launchd agent.
-  The agent runs the install script every day and reinstalls on each device with 2 days or fewer
-  left.
+- `scripts/setup-auto-reinstall.sh <device-id>[,<device-id>...]` installs a launchd agent.
+  The agent runs the install script every 30 minutes from 08:00 to 22:30 and reinstalls on each
+  device with 2 days or fewer left.
 
-The Mac must be on, and each device must be on the same Wi-Fi network and unlocked. A device that
-misses a run keeps its build and is tried again the next day. A free Apple ID signs for at most 3
+The Mac must be on, and each device must be on the same Wi-Fi network and unlocked. The script
+skips a device that it cannot reach and tries it again at the next run. When the build on a device
+has less than 6 hours left and the device cannot be reached, the Mac shows a notification. A free Apple ID signs for at most 3
 devices, and a new device must be in Xcode's device list once before its first install.
 
 ## Development
