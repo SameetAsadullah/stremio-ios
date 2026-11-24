@@ -7,6 +7,8 @@
 # cannot read ~/Documents without a privacy prompt. Run scripts/setup-auto-reinstall.sh after a change.
 set -euo pipefail
 export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+# launchd sets no locale. devicectl then prints "?" in place of "•" and other non-ASCII text.
+export LC_ALL=en_US.UTF-8
 
 IFS=',' read -ra DEVICES <<< "${1:?usage: install-on-iphone.sh <device-id>[,<device-id>...] [days-left]}"
 DAYS_LEFT="${2:-0}"
@@ -25,10 +27,12 @@ notify() { osascript -e "display notification \"$1\" with title \"Stremio reinst
 fail() { log "FAILED: $1"; notify "Failed: $1"; exit 1; }
 profile_field() { security cms -D -i "$1" 2>/dev/null | plutil -extract "$2" raw -o - - 2>/dev/null; }
 
-# Prints the device name. Fails when the device cannot be reached, for example when it is locked
-# and idle or on another network.
+# Fails when the device cannot be reached, for example when it is locked and idle or on another
+# network.
+reachable() { xcrun devicectl device info details --device "$1" >/dev/null 2>&1; }
+
 device_name() {
-    xcrun devicectl device info details --device "$1" 2>/dev/null | sed -n 's/^ *• Device Name: //p' | head -1 | grep .
+    xcrun devicectl device info details --device "$1" 2>/dev/null | sed -n 's/^ *• Device Name: //p' | head -1 | grep . || echo "$1"
 }
 
 # The agent runs every 30 minutes, so a device that cannot be reached is only logged. It notifies
@@ -39,7 +43,7 @@ for device in "${DEVICES[@]}"; do
     hours_left=-1
     [[ -f "$file" ]] && hours_left=$(( ($(cat "$file") - $(date +%s)) / 3600 ))
     (( DAYS_LEFT > 0 && hours_left > DAYS_LEFT * 24 )) && continue
-    if ! device_name "$device" >/dev/null; then
+    if ! reachable "$device"; then
         log "$device: cannot be reached, skipped"
         if [[ -f "$file" ]] && (( hours_left < 6 )); then
             notify "$device: the app expires in $hours_left h. Unlock the phone on the same Wi-Fi as the Mac."
@@ -80,7 +84,7 @@ until_text=$(date -r "$expiry" '+%-d %b %H:%M')
 # A device that is away or locked keeps its old build and is tried again on the next run.
 failed=()
 for device in "${due[@]}"; do
-    name=$(device_name "$device" || echo "$device")
+    name=$(device_name "$device")
     if xcrun devicectl device install app --device "$device" "$APP"; then
         echo "$expiry" > "$(expires_file "$device")"
         log "$name: installed $commit, runs until $until_text"
